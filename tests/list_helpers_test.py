@@ -1,4 +1,4 @@
-from helpers.list_helpers import offset
+from data_helpers.list_helpers import offset
 
 
 def test_offset():

@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import NamedTuple, List, Sequence, Tuple
 import pytest
 
-from .cls_parsing import dict_to_cls, _replace_recursive, get_val_from_tuple
+from data_helpers.cls_parsing import dict_to_cls, _replace_recursive, get_val_from_tuple
 import sys
 if sys.version_info <= (3, 9):
     list = List

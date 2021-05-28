@@ -17,8 +17,8 @@ from copy import deepcopy
 from functools import reduce
 import numpy as np
 
-from .dictionary_helpers import get_nested_val
-from .comparisons import isNamedTuple
+from data_helpers.dictionary_helpers import get_nested_val
+from data_helpers.comparisons import isNamedTuple
 
 
 def rgetattr(obj: object, attr: Union[str, List[str]], *args):

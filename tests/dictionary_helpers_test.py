@@ -1,8 +1,8 @@
 
 from typing import NamedTuple
 
-from .fill_np_array import fill_np_array_with_cls
-from .dictionary_helpers import get_nested_val
+from data_helpers.fill_np_array import fill_np_array_with_cls
+from data_helpers.dictionary_helpers import get_nested_val
 
 
 def test_get_nested_args_from_dict():

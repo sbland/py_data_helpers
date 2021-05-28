@@ -1,4 +1,4 @@
-from .functional_helpers import fp_while, fp_while_i
+from data_helpers.functional_helpers import fp_while, fp_while_i
 
 
 def test_fp_while():

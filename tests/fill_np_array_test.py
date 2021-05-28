@@ -2,7 +2,7 @@ from collections import namedtuple
 import numpy as np
 import pytest
 
-from . import fill_np_array
+from data_helpers import fill_np_array
 
 
 def test_get_numpy_element_count():

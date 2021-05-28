@@ -2,7 +2,7 @@ from dataclasses import is_dataclass
 
 import numpy as np
 
-from .comparisons import isNamedTuple
+from data_helpers.comparisons import isNamedTuple
 
 
 def get_val_from_obj(obj, k):

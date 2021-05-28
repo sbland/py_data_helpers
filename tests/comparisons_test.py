@@ -2,9 +2,9 @@ from typing import NamedTuple, List
 
 import numpy as np
 
-from .fill_np_array import fill_np_array_with_cls
+from data_helpers.fill_np_array import fill_np_array_with_cls
 
-from .comparisons import are_equal_safe, compare_named_tuples, tuples_are_equal
+from data_helpers.comparisons import are_equal_safe, compare_named_tuples, tuples_are_equal
 
 
 def test_are_equal_safe_floats():
