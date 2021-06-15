@@ -1,10 +1,11 @@
+import sys
 from enum import Enum
 from dataclasses import dataclass
 from typing import NamedTuple, List, Sequence, Tuple
 import pytest
 
 from data_helpers.cls_parsing import dict_to_cls, _replace_recursive, get_val_from_tuple
-import sys
+
 if sys.version_info <= (3, 9):
     list = List
     tuple = Tuple
@@ -97,6 +98,26 @@ def test_dict_to_cls_nested_named_tuple():
 
     new_object = dict_to_cls(d, Wrap)
     assert new_object == Wrap(a=A(lat=52.2, lon=-1.12))
+
+
+def test_dict_to_cls_nested_list_of_lists():
+
+    class Wrap(NamedTuple):
+        a: List[List[int]] = [[0]]
+
+    d = {
+        "a": [
+            [
+                1, 2, 3
+            ],
+            [
+                4, 5, 6,
+            ]
+        ],
+    }
+
+    new_object = dict_to_cls(d, Wrap)
+    assert new_object == Wrap(a=[[1, 2, 3], [4, 5, 6]])
 
 
 class FooEnum(Enum):

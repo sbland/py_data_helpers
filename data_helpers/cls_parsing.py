@@ -106,6 +106,10 @@ def parse_list_val(f, t, v, strict=False):
         return v
     if is_dataclass(item_type):
         return [dict_to_cls(vi, item_type, strict) for vi in v]
+
+    p = get_parser(item_type)
+    if p:
+        return [p(f, item_type, vi, strict=strict) for vi in v]
     if item_type.__bases__[0].__name__ == 'tuple':
         return [dict_to_cls(vi, item_type, strict) for vi in v]
     return None
