@@ -1,10 +1,11 @@
 import sys
+from typing import Union
 from enum import Enum
 from dataclasses import dataclass
 from typing import NamedTuple, List, Sequence, Tuple
 import pytest
 
-from data_helpers.cls_parsing import dict_to_cls, _replace_recursive, get_val_from_tuple
+from data_helpers.cls_parsing import dict_to_cls, _replace_recursive, get_parser, get_val_from_tuple, parse_base_val
 
 if sys.version_info <= (3, 9):
     list = List
@@ -258,6 +259,36 @@ def test_dict_to_cls_invalid():
 
     with pytest.raises(Exception):
         dict_to_cls(d3, Wrap, strict=True)
+
+
+class TestGetParser():
+
+    def test_get_parser_Union(self):
+        t = Union[int, float]
+        parser = get_parser(t)
+        assert parser == parse_base_val
+
+    def test_get_parser_Union_cls(self):
+
+        t = Union[int, float]
+        parser = get_parser(t)
+        assert parser == parse_base_val
+
+    def test_get_parser_Union_incompatible(self):
+        # Should throw error if union types are not similar
+
+        class A(NamedTuple):
+            foo: float = None
+
+        class B(NamedTuple):
+            foo: List[str] = []
+
+        t = Union[A, B]
+
+        with pytest.raises(Exception) as e:
+            get_parser(t)
+
+        assert "Invalid Union Type" in str(e)
 
 
 def test_replace_recursive():

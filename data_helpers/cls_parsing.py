@@ -143,6 +143,57 @@ def parse_enum_val(f, t, v, strict=False):
         raise ValueError(f'{v} is not a member of enum {t}')
 
 
+def is_union(t) -> bool:
+    if get_origin:
+        if get_origin(t) == Union:
+            return True
+    else:
+        if t.__args__:
+            True
+    return False
+
+
+def is_iterable(t) -> bool:
+    if get_origin:
+        if get_origin(t) == list:
+            return True
+        if get_origin(t) == Sequence:
+            return True
+        if get_origin(t) == CSequence:
+            return True
+    # Py < 3.9
+    else:
+        if type(t) == type(List):
+            return True
+        if type(t) == type(Sequence):
+            return True
+        if type(t) == type(CSequence):
+            return True
+    return False
+
+
+def is_enum(t) -> bool:
+    if issubclass(t, Enum):
+        return True
+    return False
+
+
+def is_named_tuple(t) -> bool:
+    try:
+        # A hack to check if type is a named tuple
+        if t.__bases__ and t.__bases__[0].__name__ == 'tuple':
+            return True
+    except AttributeError:
+        pass
+    return False
+
+
+def is_base_cls(t) -> bool:
+    if t in [int, float, str, bool]:
+        return True
+    return False
+
+
 def get_parser(t) -> Callable[[str, type, Any, bool], object]:
     """Get the function that can parse the supplied type.
 
@@ -164,34 +215,21 @@ def get_parser(t) -> Callable[[str, type, Any, bool], object]:
     TypeError
         Raised if the supplied type has not been implemented
     """
-    if t in [int, float, str, bool]:
+    if is_base_cls(t):
         return parse_base_val
-    # Py >= 3.9
-    if get_origin:
-        if get_origin(t) == list:
-            return parse_list_val
-        if get_origin(t) == Sequence:
-            return parse_list_val
-        if get_origin(t) == CSequence:
-            return parse_list_val
-    # Py < 3.9
-    else:
-        if type(t) == type(List):
-            return parse_list_val
-        if type(t) == type(Sequence):
-            return parse_list_val
-        if type(t) == type(CSequence):
-            return parse_list_val
+    if is_iterable(t):
+        return parse_list_val
+    if is_union(t):
+        if not all(is_base_cls(a) for a in t.__args__):
+            raise ValueError("Invalid Union Type: Can only parse Unions of base classes")
+        return get_parser(t.__args__[0])
     if is_dataclass(t):
         return parse_dataclass_val
-    if issubclass(t, Enum):
+    if is_enum(t):
         return parse_enum_val
-    try:
-        # A hack to check if type is a named tuple
-        if t.__bases__ and t.__bases__[0].__name__ == 'tuple':
-            return parse_named_tuple_val
-    except AttributeError:
-        pass
+    if is_named_tuple(t):
+        return parse_named_tuple_val
+
     raise TypeError('{} is invalid type'.format(t))
 
 
