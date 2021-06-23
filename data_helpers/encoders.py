@@ -2,11 +2,17 @@ from dataclasses import asdict, is_dataclass
 import json
 import numpy as np
 from functools import reduce
-from deprecated import deprecated
+
+from enum import Enum
 
 
-@deprecated(reason="Use NumpyEncoder in encoder module instead")
-class NumpyEncoder(json.JSONEncoder):
+def is_enum(t) -> bool:
+    if issubclass(t, Enum):
+        return True
+    return False
+
+
+class AdvancedJsonEncoder(json.JSONEncoder):
     """ Special json encoder for numpy types
     https://stackoverflow.com/questions/26646362/numpy-array-is-not-json-serializable
     """
@@ -21,17 +27,12 @@ class NumpyEncoder(json.JSONEncoder):
         elif is_dataclass(obj):
             return asdict(obj)
         elif isinstance(obj, np.ndarray):
-            if obj.dtype in [np.integer, np.floating, np.character, np.float64]:
-                return ','.join([str(i) for i in obj.tolist()])
-            else:
-                return obj.tolist()
+            return obj.tolist()
+            # TODO: Check why we did this
+            # if obj.dtype in [np.integer, np.floating, np.character, np.float64]:
+            #     return '[' + ','.join([str(i) for i in obj.tolist()]) + ']'
+            # else:
+            #     return obj.tolist()
+        elif issubclass(type(obj), Enum):
+            return obj.value
         return json.JSONEncoder.default(self, obj)
-
-
-def prep_data_for_snapshot(data):
-    def _r(acc, ik):
-        key, value = ik
-        if isinstance(value, list):
-            acc[key] = ', '.join([str(i) for i in value])
-        return acc
-    return reduce(_r, data.items(), {})

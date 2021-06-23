@@ -16,7 +16,8 @@ setuptools.setup(
         'wheel',
         'pytest-cov',
         'pytest-runner',
-        'snapshottest'
+        'snapshottest',
+        'deprecated'
     ],
     tests_require=['pytest', 'numpy', 'pytest-benchmark'],
     extras_require={'test': ['pytest', 'numpy']},
