@@ -99,19 +99,27 @@ def parse_base_val(f, t, v, strict=False):
 
 
 def parse_list_val(f, t, v, strict=False):
-    item_type = t.__args__[0]
-    if strict and not isinstance(v, list):
-        raise TypeError('{} must be {}'.format(f, t))
-    if item_type in [int, float, str, bool]:
-        return v
-    if is_dataclass(item_type):
-        return [dict_to_cls(vi, item_type, strict) for vi in v]
+    try:
+        item_type = t.__args__[0]
 
-    p = get_parser(item_type)
-    if p:
-        return [p(f, item_type, vi, strict=strict) for vi in v]
-    if item_type.__bases__[0].__name__ == 'tuple':
-        return [dict_to_cls(vi, item_type, strict) for vi in v]
+        if strict and not isinstance(v, list):
+            raise TypeError('{} must be {}'.format(f, t))
+        if item_type in [int, float, str, bool]:
+            return v
+        # Py >= 3.9
+        if get_origin and get_origin(item_type) in [list, Sequence, CSequence]:
+            return [parse_list_val(f, item_type, vv) for vv in v]
+        # Py < 3.9
+        else:
+            if type(item_type) in [type(List), type(Sequence), type(CSequence)]:
+                a = type(item_type)
+        if is_dataclass(item_type):
+            return [dict_to_cls(vi, item_type, strict) for vi in v]
+        if item_type.__bases__[0].__name__ == 'tuple':
+            return [dict_to_cls(vi, item_type, strict) for vi in v]
+    except AttributeError as e:
+        warn(f"Invalid type: {t}, {f}: {v}")
+        raise e
     return None
 
 
