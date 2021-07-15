@@ -1,38 +1,29 @@
+from dataclasses import is_dataclass
 import inspect
-from data_helpers.cls_parsing import dict_to_cls
-from data_helpers.encoders import AdvancedJsonDecoder, AdvancedJsonEncoder
+from data_helpers.cls_parsing import is_enum
 import pytest
-import json
 from enum import Enum
 from data_helpers.cls_construction import *
 
 
-# example_fields = [
-#     Field('main', 'foo', 'Foo', str, 'Example field', None, []),
-#     Field('main', 'bar', 'Bar', str, 'Example field', "default_bar", []),
-#     Select('main', 'sel', 'Sel', str, 'Example field', None,
-#            options=[Option('a', 'A', []), Option('b', 'B', [])]),
-# ]
-
-# example_fields = [
-#     Field('main', 'foo', 'Foo', str, 'Example field description a', True, None, []),
-#     NumberField('main', 'bar', 'Bar', int, 'Example number field', False, 9, min=3, max=33, step=3),
-#     Select('main', 'sel', 'Sel', str, 'Example field', False, None,
-#            options=[Option('a', 'A', []), Option('b', 'B', [])]),
-#     Field('other', 'bar', 'Bar', str, 'Example field', True, "default_bar", []),
-# ]
-
-
 example_fields = [
     Field('foo', 'Foo', str, 'Example field description a', True, None, []),
+    Select('sel', 'Sel', str, 'Example field', False, None,
+           options=[Option('a', 'A', []), Option('b', 'B', [])]),
+    NumberField('bar', 'Bar', int, 'Example number field', False, 9, min=3, max=33, step=3),
+    # ListWrap('foos', 'Foos', int, 'Example list', default=[]),
     Group('main', 'Main', [
-        NumberField('bar', 'Bar', int, 'Example number field', False, 9, min=3, max=33, step=3),
-        Select('sel', 'Sel', str, 'Example field', False, None,
-               options=[Option('a', 'A', []), Option('b', 'B', [])]),
+        Field('inner', 'Inner', str),
     ]),
     Group('other', 'Other', [
-        Field('bar', 'Bar', str, 'Example field description a', True, "default_bar", []),
+        Field('inner_b', 'InnerB', str),
     ]),
+]
+
+examples_dataclass_fields = [
+    ('foo', str),
+    ('main', type),
+    ('other')
 ]
 
 example_class = Group('GeneratedType', 'Generated Type', example_fields)
@@ -46,19 +37,21 @@ class SelEnum(Enum):
 @dataclass
 class MainGroup:
 
-    sel: SelEnum
-    bar: int = 9
+    inner: str
 
 
 @dataclass
 class OtherGroup:
 
-    bar: str = "default_bar"
+    inner_b: str
 
 
 @dataclass
 class GeneratedType:
     foo: str
+    sel: SelEnum
+    bar: int = 9
+    # foos: List[int] = field(default_factory=lambda: [])
     main: MainGroup = field(default_factory=lambda: MainGroup())
     other: OtherGroup = field(default_factory=lambda: OtherGroup())
 
@@ -84,19 +77,20 @@ def check_class_match(cls_a, cls_b, verbose=False) -> bool:
             a_cls = a_members['__annotations__'][k]
             b_cls = b_members['__annotations__'][k]
             if a_cls != b_cls:
-                a_field_members = dict(inspect.getmembers(
-                    a_cls))
-                b_field_members = dict(inspect.getmembers(
-                    b_cls))
-                print(a_cls)
-                print(b_cls)
-                print(a_field_members['__annotations__'].keys())
-                print(b_field_members['__annotations__'].keys())
-                # Assert fields in each group match
-                for f in a_field_members['__annotations__'].keys():
-                    assert str(a_field_members['__annotations__'][f]) \
-                        == str(b_field_members['__annotations__'][f])
-
+                if is_dataclass(a_cls):
+                    a_field_members = dict(inspect.getmembers(
+                        a_cls))
+                    b_field_members = dict(inspect.getmembers(
+                        b_cls))
+                    for f in a_field_members['__annotations__'].keys():
+                        assert str(a_field_members['__annotations__'][f]) \
+                            == str(b_field_members['__annotations__'][f])
+                elif is_enum(a_cls):
+                    assert [a.value for a in a_cls] == [a.value for a in b_cls]
+                    assert [a.name for a in a_cls] == [a.name for a in b_cls]
+                else:
+                    print(type(a_cls))
+                    raise ValueError("Invalid type")
         # TODO: Check enums match
 
         # Does not match because import location is different
@@ -130,25 +124,26 @@ class TestConstructDataclassFromDict:
             "GeneratedType", example_class, globals().get('__name__'))
         MainGroupGenerated = subclasses["Main"]
         # Note args are not type checked
-        mainGroup = MainGroupGenerated("hello", 1)
-        assert mainGroup.sel == "hello"
-        assert mainGroup.bar == 1
+        mainGroup = MainGroupGenerated("hello")
+        assert mainGroup.inner == "hello"
 
     def test_should_be_able_to_create_instance_of_class(self):
         OutCls, subclasses = group_to_class(
             "GeneratedType", example_class, globals().get('__name__'))
 
         MainGroupGenerated = subclasses["Main"]
-        mainGroup = MainGroupGenerated("hello", 1)
+        mainGroup = MainGroupGenerated("hello")
         OtherGroupGenerated = subclasses["Other"]
         otherGroup = OtherGroupGenerated("World")
+        SelEnumGenerated = subclasses["Sel"]
 
-        assert mainGroup.sel == "hello"
-        assert otherGroup.bar == "World"
+        assert mainGroup.inner == "hello"
+        assert otherGroup.inner_b == "World"
         foo = "foo"
-        out = OutCls(foo, mainGroup, otherGroup)
-        assert out.main.sel == "hello"
-        assert out.other.bar == "World"
+        sel = SelEnumGenerated.A
+        out = OutCls(foo, sel, mainGroup, otherGroup)
+        assert out.main.inner == "hello"
+        assert out.other.inner_b == "World"
 
     def test_should_correctly_raise_missing_arg_error(self):
         OutCls, subclasses = group_to_class(
@@ -156,11 +151,22 @@ class TestConstructDataclassFromDict:
 
         with pytest.raises(TypeError) as e:
             out = OutCls()
-        assert "TypeError(\"__init__() missing 3 required positional arguments: 'foo', 'main', and 'other'\")" in str(
+        assert "TypeError(\"__init__() missing 4 required positional arguments: 'foo', 'sel', 'main', and 'other'\")" in str(
             e)
 
     def test_should_parse_json_to_class_using_field_data(self):
         pass
+
+    def test_should_be_able_to_create_a_list_field_with_length_tied_to_another_field(self):
+        pass
+
+
+# class TestFieldToDataclassField:
+
+#     @pytest.mark.parametrize('field target', )
+#     def test_should_match_fields(self, field, target):
+#         out = field_to_dataclass_field(field, globals().get("__name__"))
+#         assert out == target
 
 
 # class TestStruct:
