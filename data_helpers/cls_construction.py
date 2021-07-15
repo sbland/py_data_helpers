@@ -49,6 +49,12 @@ class Option:
 
 
 @dataclass
+class ListWrap(Field):
+
+    pass
+
+
+@dataclass
 class Select(FieldBase):
 
     options: List[Tuple[str, str]] = field(default_factory=lambda: [])
@@ -63,18 +69,31 @@ def field_to_dataclass_field(f: FieldBase, module):
     field_out = None
     Cls = None
     if isinstance(f, Group):
+        # TODO: Return subclasses
         Cls, subclasses = group_to_class(f.label, f, module)
         field_out = (f.variable, Cls)
+    elif isinstance(f, ListWrap):
+        Cls = List[f.cls]
+        if f.default is not None:
+            field_out = (f.variable, Cls, field(default_factory=lambda: f.default))
+        else:
+            field_out = (f.variable, Cls)
     elif isinstance(f, Field):
         Cls = f.cls
-        if f.default:
-            field_out = (f.variable, Cls, field(default=f.default))
+        if f.default is not None:
+            if type(f.cls) in [dict, list]:
+                field_out = (f.variable, Cls, field(default_factory=lambda: f.default))
+            else:
+                field_out = (f.variable, Cls, field(default=f.default))
         else:
             field_out = (f.variable, Cls)
     elif isinstance(f, NumberField):
         Cls = f.cls
-        if f.default:
-            field_out = (f.variable, Cls, field(default=f.default))
+        if f.default is not None:
+            if type(f.cls) in [dict, list]:
+                field_out = (f.variable, Cls, field(default_factory=lambda: f.default))
+            else:
+                field_out = (f.variable, Cls, field(default=f.default))
         else:
             field_out = (f.variable, Cls)
     elif isinstance(f, Select):
@@ -95,15 +114,12 @@ def sort_fields(field: Field) -> bool:
 
 
 def group_to_class(cls_name, group: Group, module) -> object:
-    subclasses = {}
+    sorted_fields = sorted(group.fields, key=sort_fields)
     fields_parsed, classes = zip(*[field_to_dataclass_field(f, module)
-                                   for f in sorted(group.fields, key=sort_fields)])
-    subclasses = {
-        **subclasses,
-        **dict(classes),
-    }
+                                   for f in sorted_fields])
+    subclasses = dict(classes)
     obj = make_dataclass(cls_name, fields_parsed)
-    obj.__doc__ = "Generated Dataclass"
+    obj.__doc__ = f"{group.label} Generated Dataclass"
     obj.__module__ = module
     return obj, subclasses
 

@@ -11,7 +11,8 @@ example_fields = [
     Select('sel', 'Sel', str, 'Example field', False, None,
            options=[Option('a', 'A', []), Option('b', 'B', [])]),
     NumberField('bar', 'Bar', int, 'Example number field', False, 9, min=3, max=33, step=3),
-    # ListWrap('foos', 'Foos', int, 'Example list', default=[]),
+    ListWrap('foos', 'Foos', int, 'Example list', default=[]),
+    # TODO: List of a group
     Group('main', 'Main', [
         Field('inner', 'Inner', str),
     ]),
@@ -51,7 +52,7 @@ class GeneratedType:
     foo: str
     sel: SelEnum
     bar: int = 9
-    # foos: List[int] = field(default_factory=lambda: [])
+    foos: List[int] = field(default_factory=lambda: [])
     main: MainGroup = field(default_factory=lambda: MainGroup())
     other: OtherGroup = field(default_factory=lambda: OtherGroup())
 
@@ -66,7 +67,6 @@ def check_class_match(cls_a, cls_b, verbose=False) -> bool:
         for k in a_members.keys():
             assert k in b_members
         for k in match_attrs:
-            # print(k)
             assert str(a_members[k]) == str(b_members[k])
 
         for k in a_members['__annotations__'].keys():
