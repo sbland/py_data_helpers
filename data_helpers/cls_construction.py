@@ -198,28 +198,50 @@ try:
 
             self.input_layout = lambda: widgets.Layout(width='40%')
             self.label_layout = widgets.Layout(
-                width='10%', display="flex", justify_content="flex-end")
+                width='10%',
+                display="flex",
+                justify_content="flex-end",
+                padding="1px",
+            )
             self.desc_layout = widgets.Layout(
-                width='50%', display="flex", justify_content="flex-start")
+                width='50%',
+                display="flex wrap",
+                justify_content="flex-start",
+            )
             self.field_container_layout = widgets.Layout(
-                display='flex', width='100%', align_items='stretch', flex_flow='horiz')
+                display='flex',
+                width='100%',
+                align_items='stretch',
+                flex_flow='horiz',
+                padding="1px",
+            )
 
-        def container_layout(self, expanded=True): return widgets.Layout(
+            self.container_layout = widgets.Layout(
+                display='flex',
+                width='100%',
+                flex_flow='column',
+                align_items='stretch',
+            )
+
+        def collapsable_container_wrap_layout(self, expanded=True): return widgets.Layout(
             display='flex',
             width='100%',
-            border='solid 0.1px red',
+            border='solid 0.1px grey',
             flex_flow='column',
             align_items='stretch',
-            height='auto',
+            max_height='10000px',
+            height='100%',
             visibility='visible',
+            padding="10px",
         ) if expanded else widgets.Layout(
             display='flex',
             width='100%',
-            border='solid 0.1px red',
+            border='solid 0.1px grey',
             flex_flow='column',
             align_items='stretch',
-            height='0',
+            max_height='0px',
             visibility='hidden',
+            padding="10px",
         )
 
         def get_field(self, field: FieldBase):
@@ -244,14 +266,10 @@ try:
             return input_field, contained
 
         def get_group_widget(self, f, label, description):
-            # TODO: return field_inputs
             input_field, field_widgets, field_inputs = self.get_widget_container_from_group(f)
-            contained = widgets.Box([label, input_field, description],
-                                    layout=self.field_container_layout)
-            return field_inputs, contained
+            return field_inputs, input_field
 
         def get_list_widget(self, f, label, description):
-            # TODO: return field_inputs
             MAX_LIST_LENGTH = 10
             def item_layout(): return widgets.Layout(visibility='hidden', max_height='0px')
 
@@ -260,15 +278,16 @@ try:
 
             field_widgets_wrapped = [widgets.Box([w], layout=item_layout()) for w in field_widgets]
             box_layout = widgets.Layout(
-                overflow='hidden scroll',
-                border='1px solid black',
+                # overflow='hidden scroll',
+                border='1px solid green',
                 width='100%',
                 # max_height='100px', # TODO: This causes squashed inputs
                 flex_flow='column',
                 display='flex',
+                padding="10px",
             )
 
-            field_count = widgets.IntSlider(value=0, min=0, max=len(
+            field_count = widgets.IntSlider(value=1, min=0, max=len(
                 field_widgets_wrapped) - 1, description="Field count")
 
             def limit_inputs_to_slider(sender):
@@ -278,12 +297,14 @@ try:
                         inputItem.layout.max_height = "0px"
                     else:
                         inputItem.layout.visibility = "visible"
-                        inputItem.layout.max_height = "100px"
+                        inputItem.layout.max_height = "10000px"
 
             field_count.observe(limit_inputs_to_slider, names="value")
 
             inputs_contained = widgets.Box(field_widgets_wrapped, layout=box_layout)
-            list_label = widgets.Label(f"LIST: {f.field.variable}", layout=self.label_layout)
+            list_label = widgets.HTML(f"LIST: {f.field.variable}", layout=self.label_layout)
+            list_label.add_class("list_label")
+
             contained_a = widgets.Box([list_label, field_count, description],
                                       layout=self.field_container_layout)
             contained = widgets.VBox([contained_a, inputs_contained])
@@ -291,9 +312,10 @@ try:
 
         def get_widget_container(self, f):
             is_list = isinstance(f, ListBase)
-            label = widgets.Label(f.field.label if is_list else f.label,
-                                  layout=self.label_layout)
-            desc = widgets.Label(f.field.desc if is_list else f.desc, layout=self.desc_layout)
+            label = widgets.HTML(f.field.label if is_list else f.label,
+                                 layout=self.label_layout)
+            label.add_class("field_label")
+            desc = widgets.HTML(f.field.desc if is_list else f.desc, layout=self.desc_layout)
 
             if is_list:
                 input_field, contained = self.get_list_widget(f, label, desc)
@@ -313,18 +335,19 @@ try:
                 field_inputs.append((i, input_field))
 
             sections = []
-            content = widgets.Box(field_widgets, layout=self.container_layout(False))
+            content = widgets.Box(
+                field_widgets, layout=self.collapsable_container_wrap_layout(False))
             header_btn = widgets.Button(description=group.label)
-            sections.append(widgets.Box([header_btn, content], layout=self.container_layout()))
+            sections.append(widgets.Box([header_btn, content], layout=self.container_layout))
 
             def on_button_clicked(target):
                 def inner(b):
                     is_visable = target.layout.visibility != 'hidden'
-                    target.layout = self.container_layout(
-                        False) if is_visable else self.container_layout(True)
+                    target.layout = self.collapsable_container_wrap_layout(
+                        False) if is_visable else self.collapsable_container_wrap_layout(True)
                 return inner
             header_btn.on_click(on_button_clicked(content))
-            container = widgets.VBox(sections, layout=self.container_layout())
+            container = widgets.VBox(sections, layout=self.field_container_layout)
             return container, field_widgets, field_inputs
 
         def generate_widgets(self):
