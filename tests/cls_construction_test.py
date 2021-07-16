@@ -190,6 +190,36 @@ class TestConfigGeneratorUi:
         config_ui = ConfigGeneratorUI(example_group)
         config_ui.generate_widgets()
 
+    def test_can_get_input_data_from_generated_ui(self):
+        config_ui = ConfigGeneratorUI(example_group)
+        config_ui.generate_widgets()
+        config_ui.field_inputs[3][1][0].value = 3
+        config_ui.field_inputs[6][1][0].value = 3
+        data = config_ui.get_data_dict()
+        print(data)
+        assert data == {
+            'foo': '',
+            'sel': 'a',
+            'bar': 3,
+            'foos': [
+                '',
+                '',
+                '',
+            ],
+            'main': {
+                'inner': '',
+            },
+            'other': {
+                'inner_b': '',
+            },
+            'list_group': [
+                {'inner_l': ''},
+                {'inner_l': ''},
+                {'inner_l': ''},
+            ],
+        }
+
+
 # class TestStruct:
 
 #     @pytest.fixture(autouse=True)
@@ -205,7 +235,7 @@ class TestConfigGeneratorUi:
 
 #     def test_can_create_from_dictionary(self):
 #         NewStruct = Struct(self.example_dict)
-#         assert isinstance(NewStruct, object)
+#         assert isinstance(NewStruct, # object)
 
 #     def test_stores_variable_types(self):
 #         NewStruct = Struct(self.example_dict)
@@ -215,7 +245,7 @@ class TestConfigGeneratorUi:
 #     # def test_can_create_instance_of_struct(self):
 #     #     NewStruct = Struct(self.example_dict)
 #     #     struct = NewStruct()
-#     #     assert isinstance(struct, NewStruct)
+#     #     assert isinstance(struct, # NewStruct)
 
 #     # def test_can_access_properties(self):
 #     #     NewStruct = Struct(self.example_dict)

@@ -248,7 +248,7 @@ try:
             input_field, field_widgets, field_inputs = self.get_widget_container_from_group(f)
             contained = widgets.Box([label, input_field, description],
                                     layout=self.field_container_layout)
-            return input_field, contained
+            return field_inputs, contained
 
         def get_list_widget(self, f, label, description):
             # TODO: return field_inputs
@@ -273,7 +273,7 @@ try:
 
             def limit_inputs_to_slider(sender):
                 for i, inputItem in enumerate(field_widgets_wrapped):
-                    if i > field_count.value:
+                    if i >= field_count.value:
                         inputItem.layout.visibility = "hidden"
                         inputItem.layout.max_height = "0px"
                     else:
@@ -287,7 +287,7 @@ try:
             contained_a = widgets.Box([list_label, field_count, description],
                                       layout=self.field_container_layout)
             contained = widgets.VBox([contained_a, inputs_contained])
-            return field_widgets_wrapped, contained
+            return (field_count, field_inputs), contained
 
         def get_widget_container(self, f):
             is_list = isinstance(f, ListBase)
@@ -296,14 +296,7 @@ try:
             desc = widgets.Label(f.field.desc if is_list else f.desc, layout=self.desc_layout)
 
             if is_list:
-                if isinstance(f.field, Group):
-                    # TODO: Implement groups and list groups
-                    input_field, contained = self.get_list_widget(f, label, desc)
-                    # input_field = widgets.Label("Group List Placeholder")
-                    # contained = widgets.Box([label, input_field, desc],
-                    #                         layout=self.field_container_layout)
-                else:
-                    input_field, contained = self.get_list_widget(f, label, desc)
+                input_field, contained = self.get_list_widget(f, label, desc)
             else:
                 get_widget = self.get_group_widget if isinstance(
                     f, Group) else self.get_field_widget_wrap
@@ -342,14 +335,22 @@ try:
             self.field_inputs = field_inputs
             return container
 
+        def get_field_data(self, f, w):
+            if isinstance(f, FieldBase):
+                return w.value
+            if isinstance(f, Group):
+                return {fi.variable: self.get_field_data(fi, wi[1]) for fi, wi in zip(f.fields, w)}
+            if isinstance(f, ListBase):
+                # TODO: Limit this to range of IntSlider
+                return [self.get_field_data(f.field, wi) for wi in w[1]][0:w[0].value]
+            return 'UNDEFINED'
+
         def get_data_dict(self):
             out = {}
-            for group in self.field_inputs:
-                out[group] = {}
-                group_widgets = self.field_inputs[group]
-                for (i, w) in group_widgets:
-                    field = self.fields[i]
-                    out[group][field.variable] = w.value
+            for (i, w) in self.field_inputs:
+                f = self.fields[i]
+                out[f.variable if not isinstance(
+                    f, ListBase) else f.field.variable] = self.get_field_data(f, w)
             return out
 
 except ImportError or ModuleNotFoundError:
