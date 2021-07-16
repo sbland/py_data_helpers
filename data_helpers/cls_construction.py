@@ -13,7 +13,7 @@ class FieldBase:
     desc: str = ''
     required: bool = False
     default: any = None
-    units: any = None
+    unit: any = None
 
     def __asdict__(self):
         return asdict(self)
@@ -24,6 +24,7 @@ class Group:
 
     variable: str
     label: str
+    required: bool
     fields: List[FieldBase]
 
 
@@ -45,7 +46,8 @@ class Option:
 
     uid: str
     label: str
-    dependencies: List[str]  # parameters required by option
+    description: str = ''
+    dependencies: List[str] = field(default_factory=lambda: [])  # parameters required by option
 
 
 @dataclass
@@ -68,39 +70,38 @@ def generate_enum_from_select(f: Select):
 def field_to_dataclass_field(f: FieldBase, module):
     field_out = None
     Cls = None
+    def_value = None
+    use_def = getattr(f, 'default', None) is not None or not getattr(f, 'required', False)
+    field_name = f.variable
     if isinstance(f, Group):
         # TODO: Return subclasses
         Cls, subclasses = group_to_class(f.label, f, module)
-        field_out = (f.variable, Cls)
     elif isinstance(f, ListWrap):
         Cls = List[f.cls]
         if f.default is not None:
-            field_out = (f.variable, Cls, field(default_factory=lambda: f.default))
-        else:
-            field_out = (f.variable, Cls)
+            def_value = field(default_factory=lambda: f.default)
     elif isinstance(f, Field):
         Cls = f.cls
         if f.default is not None:
             if type(f.cls) in [dict, list]:
-                field_out = (f.variable, Cls, field(default_factory=lambda: f.default))
+                def_value = field(default_factory=lambda: f.default)
             else:
-                field_out = (f.variable, Cls, field(default=f.default))
-        else:
-            field_out = (f.variable, Cls)
+                def_value = field(default=f.default)
     elif isinstance(f, NumberField):
         Cls = f.cls
         if f.default is not None:
             if type(f.cls) in [dict, list]:
-                field_out = (f.variable, Cls, field(default_factory=lambda: f.default))
+                def_value = field(default_factory=lambda: f.default)
             else:
-                field_out = (f.variable, Cls, field(default=f.default))
-        else:
-            field_out = (f.variable, Cls)
+                def_value = field(default=f.default)
     elif isinstance(f, Select):
         Cls = generate_enum_from_select(f)
-        field_out = (f.variable, Cls)
+        # TODO: Set default
+        if f.default is not None:
+            def_value = field(default=Cls[f.default])
     else:
         raise ValueError(f"Invalid fieldtype: {type(f)}")
+    field_out = (field_name, Cls) if not use_def else (field_name, Cls, def_value)
     return field_out, (f.label, Cls)
 
 

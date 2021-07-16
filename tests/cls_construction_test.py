@@ -7,27 +7,28 @@ from data_helpers.cls_construction import *
 
 
 example_fields = [
-    Field('foo', 'Foo', str, 'Example field description a', True, None, []),
-    Select('sel', 'Sel', str, 'Example field', False, None,
-           options=[Option('a', 'A', []), Option('b', 'B', [])]),
-    NumberField('bar', 'Bar', int, 'Example number field', False, 9, min=3, max=33, step=3),
+    Field('foo', 'Foo', str, 'Example field description a', True),
+    Select(
+        'sel', 'Sel', str, 'Example field', True,
+        default='A',
+        options=[
+               Option('a', 'A', []),
+               Option('b', 'B', [])
+        ]
+    ),
+
+    NumberField('bar', 'Bar', int, 'Example number field', True, 9, min=3, max=33, step=3),
     ListWrap('foos', 'Foos', int, 'Example list', default=[]),
     # TODO: List of a group
-    Group('main', 'Main', [
+    Group('main', 'Main', True, [
         Field('inner', 'Inner', str),
     ]),
-    Group('other', 'Other', [
+    Group('other', 'Other', True, [
         Field('inner_b', 'InnerB', str),
     ]),
 ]
 
-examples_dataclass_fields = [
-    ('foo', str),
-    ('main', type),
-    ('other')
-]
-
-example_class = Group('GeneratedType', 'Generated Type', example_fields)
+example_class = Group('GeneratedType', 'Generated Type', True, example_fields)
 
 
 class SelEnum(Enum):
@@ -141,9 +142,10 @@ class TestConstructDataclassFromDict:
         assert otherGroup.inner_b == "World"
         foo = "foo"
         sel = SelEnumGenerated.A
-        out = OutCls(foo, sel, mainGroup, otherGroup)
+        out = OutCls(foo=foo, main=mainGroup, other=otherGroup, sel=sel)
         assert out.main.inner == "hello"
         assert out.other.inner_b == "World"
+        assert out.sel.value == SelEnum.A.value
 
     def test_should_correctly_raise_missing_arg_error(self):
         OutCls, subclasses = group_to_class(
@@ -151,13 +153,16 @@ class TestConstructDataclassFromDict:
 
         with pytest.raises(TypeError) as e:
             out = OutCls()
-        assert "TypeError(\"__init__() missing 4 required positional arguments: 'foo', 'sel', 'main', and 'other'\")" in str(
+        assert "TypeError(\"__init__() missing 3 required positional arguments: 'foo', 'main', and 'other'\")" in str(
             e)
 
     def test_should_parse_json_to_class_using_field_data(self):
         pass
 
     def test_should_be_able_to_create_a_list_field_with_length_tied_to_another_field(self):
+        pass
+
+    def test_should_set_default_field_to_none_if_not_required(self):
         pass
 
 
