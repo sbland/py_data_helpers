@@ -1,4 +1,5 @@
 
+import inspect
 try:
     # From python 3.9+ typing is replaced with generics (PEP 585).
     # Unfortunately this breaks a lot of this code so we attempt to bridge between the two.
@@ -181,6 +182,8 @@ def is_iterable(t) -> bool:
 
 
 def is_enum(t) -> bool:
+    if not inspect.isclass(t):
+        return False
     if issubclass(t, Enum):
         return True
     return False

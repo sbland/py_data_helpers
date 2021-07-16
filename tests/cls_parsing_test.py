@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import NamedTuple, List, Sequence, Tuple
 import pytest
 
-from data_helpers.cls_parsing import dict_to_cls, _replace_recursive, get_parser, get_val_from_tuple, parse_base_val
+from data_helpers.cls_parsing import dict_to_cls, _replace_recursive, get_parser, get_val_from_tuple, parse_base_val, is_enum
 
 if sys.version_info <= (3, 9):
     list = List
@@ -346,3 +346,15 @@ def test_get_nested_args_from_tuple():
     assert result == 2
     result = get_val_from_tuple(tup, 'a.val')
     assert result == 1
+
+
+class TestIsEnum:
+    def test_is_enum(self):
+        class ExampleEnum(Enum):
+            FOO = "foo"
+        assert is_enum(ExampleEnum)
+
+    def test_is_enum_not(self):
+        class ExampleClass():
+            pass
+        assert not is_enum(ExampleClass)
