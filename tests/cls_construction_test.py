@@ -1,6 +1,7 @@
 from dataclasses import is_dataclass
 import inspect
-from data_helpers.cls_parsing import is_enum
+from typing import get_args
+from data_helpers.cls_parsing import is_enum, is_iterable
 import pytest
 from enum import Enum
 from data_helpers.cls_construction import *
@@ -18,14 +19,16 @@ example_fields = [
     ),
 
     NumberField('bar', 'Bar', int, 'Example number field', True, 9, min=3, max=33, step=3),
-    ListField('foos', 'Foos', int, 'Example list', default=[]),
-    # TODO: List of a group
+    ListField(Field('foos', 'Foos', int, 'Example list', default=[])),
     Group('main', 'Main', True, [
         Field('inner', 'Inner', str),
     ]),
     Group('other', 'Other', True, [
         Field('inner_b', 'InnerB', str),
     ]),
+    ListGroup(Group('list_group', 'List Group Example', True, [
+        Field('inner_l', 'Inner List Field', str),
+    ])),
 ]
 
 example_group = Group('GeneratedType', 'Generated Type', True, example_fields)
@@ -49,6 +52,12 @@ class OtherGroup:
 
 
 @dataclass
+class ListGroupExample:
+
+    inner_l: str
+
+
+@dataclass
 class GeneratedType:
     foo: str
     sel: SelEnum
@@ -56,6 +65,7 @@ class GeneratedType:
     foos: List[int] = field(default_factory=lambda: [])
     main: MainGroup = field(default_factory=lambda: MainGroup())
     other: OtherGroup = field(default_factory=lambda: OtherGroup())
+    list_group: List[ListGroupExample] = field(default_factory=lambda: [])
 
 
 def check_class_match(cls_a, cls_b, verbose=False) -> bool:
@@ -77,6 +87,10 @@ def check_class_match(cls_a, cls_b, verbose=False) -> bool:
 
             a_cls = a_members['__annotations__'][k]
             b_cls = b_members['__annotations__'][k]
+
+            a_cls = a_cls if not is_iterable(a_cls) else get_args(a_cls)[0]
+            b_cls = b_cls if not is_iterable(b_cls) else get_args(b_cls)[0]
+
             if a_cls != b_cls:
                 if is_dataclass(a_cls):
                     a_field_members = dict(inspect.getmembers(
@@ -127,18 +141,19 @@ class TestConstructDataclassFromDict:
 
     def test_should_be_able_to_create_instance_of_class(self):
         OutCls, subclasses = group_to_class(example_group, globals().get('__name__'))
-
         MainGroupGenerated = subclasses["Main"]
         mainGroup = MainGroupGenerated("hello")
         OtherGroupGenerated = subclasses["Other"]
         otherGroup = OtherGroupGenerated("World")
         SelEnumGenerated = subclasses["Sel"]
+        ListGroupExampleGenerated = subclasses["ListGroupExample"]
 
         assert mainGroup.inner == "hello"
         assert otherGroup.inner_b == "World"
         foo = "foo"
         sel = SelEnumGenerated.A
-        out = OutCls(foo=foo, main=mainGroup, other=otherGroup, sel=sel)
+        out = OutCls(foo=foo, main=mainGroup, other=otherGroup, sel=sel,
+                     list_group=ListGroupExampleGenerated('inner'))
         assert out.main.inner == "hello"
         assert out.other.inner_b == "World"
         assert out.sel.value == SelEnum.A.value
@@ -148,7 +163,7 @@ class TestConstructDataclassFromDict:
 
         with pytest.raises(TypeError) as e:
             out = OutCls()
-        assert "TypeError(\"__init__() missing 3 required positional arguments: 'foo', 'main', and 'other'\")" in str(
+        assert "TypeError(\"__init__() missing 4 required positional arguments: 'foo', 'main', 'other', and 'list_group'\")" in str(
             e)
 
     def test_should_parse_json_to_class_using_field_data(self):
@@ -172,7 +187,8 @@ class TestConstructDataclassFromDict:
 class TestConfigGeneratorUi:
 
     def test_can_create_ui_from_fields(self):
-        config_ui = ConfigGeneratorUI(example_group.fields)
+        config_ui = ConfigGeneratorUI(example_group)
+        config_ui.generate_widgets()
 
 # class TestStruct:
 

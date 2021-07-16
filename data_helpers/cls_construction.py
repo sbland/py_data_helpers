@@ -1,7 +1,7 @@
 """Various functions for generating classes from lower level data structures such as json."""
 from dataclasses import asdict, dataclass, field, make_dataclass
 from enum import Enum
-from typing import List, Tuple
+from typing import Callable, List, Tuple, Union
 
 
 @dataclass
@@ -26,6 +26,13 @@ class Group:
     label: str
     required: bool
     fields: List[FieldBase]
+    desc: str = ''
+
+
+@dataclass
+class ListBase:
+
+    field: Union[FieldBase, Group]
 
 
 @dataclass
@@ -51,7 +58,13 @@ class Option:
 
 
 @dataclass
-class ListField(Field):
+class ListField(ListBase):
+
+    pass
+
+
+@dataclass
+class ListGroup(ListBase):
 
     pass
 
@@ -67,51 +80,84 @@ def generate_enum_from_select(f: Select):
     return Enum(f"{f.variable.capitalize()}Enum", dict([(opt.label, opt.uid) for opt in f.options]))
 
 
-def field_to_dataclass_field(f: FieldBase, module):
-    field_out = None
-    Cls = None
-    def_value = None
-    use_def = getattr(f, 'default', None) is not None or not getattr(f, 'required', False)
-    field_name = f.variable
+def label_to_cls_name(label):
+    return ''.join(map(lambda s: s.capitalize(), label.split(' ')))
+
+
+def get_field_cls(f: FieldBase, module):
     if isinstance(f, Group):
         # TODO: Return subclasses
         Cls, subclasses = group_to_class(f, module)
-    elif isinstance(f, ListField):
-        Cls = List[f.cls]
-        if f.default is not None:
-            def_value = field(default_factory=lambda: f.default)
     elif isinstance(f, Field):
         Cls = f.cls
+    elif isinstance(f, NumberField):
+        Cls = f.cls
+    elif isinstance(f, Select):
+        Cls = generate_enum_from_select(f)
+    else:
+        raise ValueError(f"Invalid fieldtype: {type(f)}")
+    return Cls
+
+
+def get_field_default(f: FieldBase, Cls):
+    def_value = None
+    use_def = getattr(f, 'default', None) is not None or not getattr(f, 'required', False)
+    if isinstance(f, Group):
+        pass
+    elif isinstance(f, ListField):
+        if f.field.default is not None:
+            def_value = field(default_factory=lambda: f.field.default)
+    elif isinstance(f, ListGroup):
+        def_value = field(default_factory=lambda: Cls())
+    elif isinstance(f, Field):
         if f.default is not None:
             if type(f.cls) in [dict, list]:
                 def_value = field(default_factory=lambda: f.default)
             else:
                 def_value = field(default=f.default)
     elif isinstance(f, NumberField):
-        Cls = f.cls
         if f.default is not None:
             if type(f.cls) in [dict, list]:
                 def_value = field(default_factory=lambda: f.default)
             else:
                 def_value = field(default=f.default)
     elif isinstance(f, Select):
-        Cls = generate_enum_from_select(f)
         # TODO: Set default
         if f.default is not None:
             def_value = field(default=Cls[f.default])
     else:
         raise ValueError(f"Invalid fieldtype: {type(f)}")
-    field_out = (field_name, Cls) if not use_def else (field_name, Cls, def_value)
-    return field_out, (f.label, Cls)
+    return use_def, def_value
 
 
-def sort_fields(field: Field) -> bool:
+def field_to_dataclass_field(f: Union[FieldBase, ListBase], module):
+    if isinstance(f, ListBase):
+        Cls = get_field_cls(f.field, module)
+        use_def = not getattr(f.field, 'required', False)
+        def_value = True, field(default_factory=lambda: []) if use_def else None
+        field_name = f.field.variable
+        field_out = (field_name, Cls) if not use_def else (field_name, Cls, def_value)
+        return field_out, (label_to_cls_name(f.field.label), Cls)
+    else:
+        Cls = get_field_cls(f, module)
+        use_def, def_value = get_field_default(f, Cls)
+        field_name = f.variable
+        field_out = (field_name, Cls) if not use_def else (field_name, Cls, def_value)
+        return field_out, (label_to_cls_name(f.label), Cls)
+
+
+def sort_fields(f: Field) -> bool:
     """Sort dataclass construction fields.
 
     Makes fields with default arg occur after fields without default arg.
     To avoid error: `non-default argument 'sel' follows default argument`
     """
-    return 1 if getattr(field, 'default', None) is not None else 0
+
+    if isinstance(f, ListBase):
+        use_def = not getattr(f.field, 'required', False)
+        return 1 if use_def else 0
+    use_def = getattr(f, 'default', None) is not None or not getattr(f, 'required', False)
+    return 1 if use_def else 0
 
 
 def group_to_class(group: Group, module) -> object:
@@ -119,8 +165,7 @@ def group_to_class(group: Group, module) -> object:
     fields_parsed, classes = zip(*[field_to_dataclass_field(f, module)
                                    for f in sorted_fields])
     subclasses = dict(classes)
-    label_parsed = ''.join(map(lambda s: s.capitalize(), group.label.split(' ')))
-    obj = make_dataclass(label_parsed, fields_parsed)
+    obj = make_dataclass(label_to_cls_name(group.label), fields_parsed)
     obj.__doc__ = f"{group.label} Generated Dataclass"
     obj.__module__ = module
     return obj, subclasses
@@ -143,78 +188,159 @@ class Struct(object):
 try:
     import ipywidgets as widgets
 
-    def get_field(field: FieldBase, input_layout: widgets.Layout):
-        if isinstance(field, Select):
-            return widgets.RadioButtons(
-                options=[(opt.label, opt.uid) for opt in field.options],
-                layout=input_layout,
-                disabled=False
-            )
-        if isinstance(field, NumberField):
-            if field.cls == int:
-                return widgets.IntSlider(layout=input_layout, min=field.min, max=field.max, step=field.step)
-
-        if field.cls == str:
-            return widgets.Text(layout=input_layout)
-        return widgets.Text(layout=input_layout)
-
     class ConfigGeneratorUI():
 
-        def __init__(self, fields: List[FieldBase]) -> None:
-            self.fields = fields
+        def __init__(self, group: Group) -> None:
+            self.group = group
+            self.fields = group.fields
+            self.field_widgets = {}
+            self.field_inputs = {}
+
+            self.input_layout = lambda: widgets.Layout(width='40%')
+            self.label_layout = widgets.Layout(
+                width='10%', display="flex", justify_content="flex-end")
+            self.desc_layout = widgets.Layout(
+                width='50%', display="flex", justify_content="flex-start")
+            self.field_container_layout = widgets.Layout(
+                display='flex', width='100%', align_items='stretch', flex_flow='horiz')
+
+        def container_layout(self, expanded=True): return widgets.Layout(
+            display='flex',
+            width='100%',
+            border='solid 0.1px red',
+            flex_flow='column',
+            align_items='stretch',
+            height='auto',
+            visibility='visible',
+        ) if expanded else widgets.Layout(
+            display='flex',
+            width='100%',
+            border='solid 0.1px red',
+            flex_flow='column',
+            align_items='stretch',
+            height='0',
+            visibility='hidden',
+        )
+
+        def get_field(self, field: FieldBase):
+            if isinstance(field, Select):
+                return widgets.RadioButtons(
+                    options=[(opt.label, opt.uid) for opt in field.options],
+                    layout=self.input_layout(),
+                    disabled=False
+                )
+            if isinstance(field, NumberField):
+                if field.cls == int:
+                    return widgets.IntSlider(layout=self.input_layout(), min=field.min, max=field.max, step=field.step)
+
+            if field.cls == str:
+                return widgets.Text(layout=self.input_layout())
+            return widgets.Text(layout=self.input_layout())
+
+        def get_field_widget_wrap(self, f, label, description):
+            input_field = self.get_field(f)
+            contained = widgets.Box([label, input_field, description],
+                                    layout=self.field_container_layout)
+            return input_field, contained
+
+        def get_group_widget(self, f, label, description):
+            # TODO: return field_inputs
+            input_field, field_widgets, field_inputs = self.get_widget_container_from_group(f)
+            contained = widgets.Box([label, input_field, description],
+                                    layout=self.field_container_layout)
+            return input_field, contained
+
+        def get_list_widget(self, f, label, description):
+            # TODO: return field_inputs
+            MAX_LIST_LENGTH = 10
+            def item_layout(): return widgets.Layout(visibility='hidden', max_height='0px')
+
+            field_widgets, field_inputs = zip(
+                *[self.get_widget_container(f.field) for _ in range(MAX_LIST_LENGTH)])
+
+            field_widgets_wrapped = [widgets.Box([w], layout=item_layout()) for w in field_widgets]
+            box_layout = widgets.Layout(
+                overflow='hidden scroll',
+                border='1px solid black',
+                width='100%',
+                # max_height='100px', # TODO: This causes squashed inputs
+                flex_flow='column',
+                display='flex',
+            )
+
+            field_count = widgets.IntSlider(value=0, min=0, max=len(
+                field_widgets_wrapped) - 1, description="Field count")
+
+            def limit_inputs_to_slider(sender):
+                for i, inputItem in enumerate(field_widgets_wrapped):
+                    if i > field_count.value:
+                        inputItem.layout.visibility = "hidden"
+                        inputItem.layout.max_height = "0px"
+                    else:
+                        inputItem.layout.visibility = "visible"
+                        inputItem.layout.max_height = "100px"
+
+            field_count.observe(limit_inputs_to_slider, names="value")
+
+            inputs_contained = widgets.Box(field_widgets_wrapped, layout=box_layout)
+            list_label = widgets.Label(f"LIST: {f.field.variable}", layout=self.label_layout)
+            contained_a = widgets.Box([list_label, field_count, description],
+                                      layout=self.field_container_layout)
+            contained = widgets.VBox([contained_a, inputs_contained])
+            return field_widgets_wrapped, contained
+
+        def get_widget_container(self, f):
+            is_list = isinstance(f, ListBase)
+            label = widgets.Label(f.field.label if is_list else f.label,
+                                  layout=self.label_layout)
+            desc = widgets.Label(f.field.desc if is_list else f.desc, layout=self.desc_layout)
+
+            if is_list:
+                if isinstance(f.field, Group):
+                    # TODO: Implement groups and list groups
+                    input_field, contained = self.get_list_widget(f, label, desc)
+                    # input_field = widgets.Label("Group List Placeholder")
+                    # contained = widgets.Box([label, input_field, desc],
+                    #                         layout=self.field_container_layout)
+                else:
+                    input_field, contained = self.get_list_widget(f, label, desc)
+            else:
+                get_widget = self.get_group_widget if isinstance(
+                    f, Group) else self.get_field_widget_wrap
+                input_field, contained = get_widget(f, label, desc)
+            return contained, input_field
+
+        def get_widget_container_from_group(self, group):
+            field_widgets = []
+            field_inputs = []
+            for i, f in enumerate(group.fields):
+                contained, input_field = self.get_widget_container(f)
+
+                field_widgets.append(contained)
+                field_inputs.append((i, input_field))
+
+            sections = []
+            content = widgets.Box(field_widgets, layout=self.container_layout(False))
+            header_btn = widgets.Button(description=group.label)
+            sections.append(widgets.Box([header_btn, content], layout=self.container_layout()))
+
+            def on_button_clicked(target):
+                def inner(b):
+                    is_visable = target.layout.visibility != 'hidden'
+                    target.layout = self.container_layout(
+                        False) if is_visable else self.container_layout(True)
+                return inner
+            header_btn.on_click(on_button_clicked(content))
+            container = widgets.VBox(sections, layout=self.container_layout())
+            return container, field_widgets, field_inputs
 
         def generate_widgets(self):
             # TODO: Get layouts from class init
-            input_layout = widgets.Layout(width='40%')
-            label_layout = widgets.Layout(width='30%', display="flex", justify_content="flex-end")
-            desc_layout = widgets.Layout(width='30%', display="flex", justify_content="flex-start")
-            field_container_layout = widgets.Layout(
-                display='flex', width='100%', align_items='stretch', flex_flow='horiz')
-
-            def container_layout(expanded=True): return widgets.Layout(
-                display='flex',
-                border='solid 0.1px',
-                flex_flow='column',
-                align_items='stretch',
-                height='auto',
-                visibility='visible',
-            ) if expanded else widgets.Layout(
-                display='flex',
-                border='solid 0.1px',
-                flex_flow='column',
-                align_items='stretch',
-                height='0',
-                visibility='hidden',
-            )
-
-            self.field_widgets = {}
-            self.field_inputs = {}
-            for i, field in enumerate(self.fields):
-                if field.group not in self.field_widgets:
-                    self.field_widgets[field.group] = []
-                    self.field_inputs[field.group] = []
-                label = widgets.Label(field.label, layout=label_layout)
-                input_field = get_field(field, input_layout)
-                desc = widgets.Label(field.desc, layout=desc_layout)
-                contained = widgets.Box([label, input_field, desc], layout=field_container_layout)
-                self.field_widgets[field.group].append(contained)
-                self.field_inputs[field.group].append((i, input_field))
-
-            sections = []
-            for k, v in self.field_widgets.items():
-                content = widgets.Box(v, layout=container_layout(False))
-                header_btn = widgets.Button(description=k)
-                sections.append(widgets.Box([header_btn, content], layout=container_layout()))
-
-                def on_button_clicked(target, k):
-                    def inner(b):
-                        is_visable = target.layout.visibility != 'hidden'
-                        target.layout = container_layout(
-                            False) if is_visable else container_layout(True)
-                    return inner
-                header_btn.on_click(on_button_clicked(content, k))
-            boxes = widgets.VBox(sections, layout=container_layout())
-            return boxes
+            container, field_widgets, field_inputs = self.get_widget_container_from_group(
+                self.group)
+            self.field_widgets = field_widgets
+            self.field_inputs = field_inputs
+            return container
 
         def get_data_dict(self):
             out = {}
