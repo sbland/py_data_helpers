@@ -51,7 +51,7 @@ class Option:
 
 
 @dataclass
-class ListWrap(Field):
+class ListField(Field):
 
     pass
 
@@ -75,8 +75,8 @@ def field_to_dataclass_field(f: FieldBase, module):
     field_name = f.variable
     if isinstance(f, Group):
         # TODO: Return subclasses
-        Cls, subclasses = group_to_class(f.label, f, module)
-    elif isinstance(f, ListWrap):
+        Cls, subclasses = group_to_class(f, module)
+    elif isinstance(f, ListField):
         Cls = List[f.cls]
         if f.default is not None:
             def_value = field(default_factory=lambda: f.default)
@@ -114,12 +114,13 @@ def sort_fields(field: Field) -> bool:
     return 1 if getattr(field, 'default', None) is not None else 0
 
 
-def group_to_class(cls_name, group: Group, module) -> object:
+def group_to_class(group: Group, module) -> object:
     sorted_fields = sorted(group.fields, key=sort_fields)
     fields_parsed, classes = zip(*[field_to_dataclass_field(f, module)
                                    for f in sorted_fields])
     subclasses = dict(classes)
-    obj = make_dataclass(cls_name, fields_parsed)
+    label_parsed = ''.join(map(lambda s: s.capitalize(), group.label.split(' ')))
+    obj = make_dataclass(label_parsed, fields_parsed)
     obj.__doc__ = f"{group.label} Generated Dataclass"
     obj.__module__ = module
     return obj, subclasses

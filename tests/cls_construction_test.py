@@ -18,7 +18,7 @@ example_fields = [
     ),
 
     NumberField('bar', 'Bar', int, 'Example number field', True, 9, min=3, max=33, step=3),
-    ListWrap('foos', 'Foos', int, 'Example list', default=[]),
+    ListField('foos', 'Foos', int, 'Example list', default=[]),
     # TODO: List of a group
     Group('main', 'Main', True, [
         Field('inner', 'Inner', str),
@@ -28,7 +28,7 @@ example_fields = [
     ]),
 ]
 
-example_class = Group('GeneratedType', 'Generated Type', True, example_fields)
+example_group = Group('GeneratedType', 'Generated Type', True, example_fields)
 
 
 class SelEnum(Enum):
@@ -108,29 +108,25 @@ def check_class_match(cls_a, cls_b, verbose=False) -> bool:
 class TestConstructDataclassFromDict:
 
     def test_should_be_able_to_construct_cls_from_fields(self):
-        received, subclasses = group_to_class(
-            "GeneratedType", example_class, globals().get('__name__'))
+        received, subclasses = group_to_class(example_group, globals().get('__name__'))
         assert type(received) == type(GeneratedType)
 
         assert check_class_match(GeneratedType, received, True)
 
     def test_should_return_subclasses(self):
-        OutCls, subclasses = group_to_class(
-            "GeneratedType", example_class, globals().get('__name__'))
+        OutCls, subclasses = group_to_class(example_group, globals().get('__name__'))
         assert type(subclasses["Main"]) == type(MainGroup)
         assert type(subclasses["Other"]) == type(MainGroup)
 
     def test_should_be_able_to_create_sub_objs(self):
-        OutCls, subclasses = group_to_class(
-            "GeneratedType", example_class, globals().get('__name__'))
+        OutCls, subclasses = group_to_class(example_group, globals().get('__name__'))
         MainGroupGenerated = subclasses["Main"]
         # Note args are not type checked
         mainGroup = MainGroupGenerated("hello")
         assert mainGroup.inner == "hello"
 
     def test_should_be_able_to_create_instance_of_class(self):
-        OutCls, subclasses = group_to_class(
-            "GeneratedType", example_class, globals().get('__name__'))
+        OutCls, subclasses = group_to_class(example_group, globals().get('__name__'))
 
         MainGroupGenerated = subclasses["Main"]
         mainGroup = MainGroupGenerated("hello")
@@ -148,8 +144,7 @@ class TestConstructDataclassFromDict:
         assert out.sel.value == SelEnum.A.value
 
     def test_should_correctly_raise_missing_arg_error(self):
-        OutCls, subclasses = group_to_class(
-            "GeneratedType", example_class, globals().get('__name__'))
+        OutCls, subclasses = group_to_class(example_group, globals().get('__name__'))
 
         with pytest.raises(TypeError) as e:
             out = OutCls()
@@ -173,6 +168,11 @@ class TestConstructDataclassFromDict:
 #         out = field_to_dataclass_field(field, globals().get("__name__"))
 #         assert out == target
 
+
+class TestConfigGeneratorUi:
+
+    def test_can_create_ui_from_fields(self):
+        config_ui = ConfigGeneratorUI(example_group.fields)
 
 # class TestStruct:
 
