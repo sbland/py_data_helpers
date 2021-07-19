@@ -198,13 +198,13 @@ try:
 
             self.input_layout = lambda: widgets.Layout(width='40%')
             self.label_layout = widgets.Layout(
-                width='10%',
+                width='20%',
                 display="flex",
                 justify_content="flex-end",
                 padding="1px",
             )
             self.desc_layout = widgets.Layout(
-                width='50%',
+                width='40%',
                 display="flex wrap",
                 justify_content="flex-start",
             )
@@ -270,7 +270,7 @@ try:
             return field_inputs, input_field
 
         def get_list_widget(self, f, label, description):
-            MAX_LIST_LENGTH = 10
+            MAX_LIST_LENGTH = 3
             def item_layout(): return widgets.Layout(visibility='hidden', max_height='0px')
 
             field_widgets, field_inputs = zip(
@@ -287,8 +287,8 @@ try:
                 padding="10px",
             )
 
-            field_count = widgets.IntSlider(value=1, min=0, max=len(
-                field_widgets_wrapped) - 1, description="Field count")
+            field_count = widgets.IntSlider(value=0, min=0, max=len(
+                field_widgets_wrapped), description="Field count")
 
             def limit_inputs_to_slider(sender):
                 for i, inputItem in enumerate(field_widgets_wrapped):
@@ -362,7 +362,10 @@ try:
             if isinstance(f, FieldBase):
                 return w.value
             if isinstance(f, Group):
-                return {fi.variable: self.get_field_data(fi, wi[1]) for fi, wi in zip(f.fields, w)}
+                return {
+                    fi.variable if not isinstance(fi, ListBase) else fi.field.variable:
+                    self.get_field_data(fi, wi[1])
+                    for fi, wi in zip(f.fields, w)}
             if isinstance(f, ListBase):
                 # TODO: Limit this to range of IntSlider
                 return [self.get_field_data(f.field, wi) for wi in w[1]][0:w[0].value]

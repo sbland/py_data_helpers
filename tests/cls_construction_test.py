@@ -6,6 +6,16 @@ import pytest
 from enum import Enum
 from data_helpers.cls_construction import *
 
+InnerGroupStructure = Group(
+    'inner_group',
+    'Inner Group',
+    True,
+    fields=[
+        Field('name', 'Name', str, 'Name', True, default=""),
+    ],
+)
+InnerGroup, subclasses = group_to_class(InnerGroupStructure, globals().get('__name__'))
+
 
 example_fields = [
     Field('foo', 'Foo', str, 'Example field description a', True),
@@ -29,6 +39,19 @@ example_fields = [
     ListGroup(Group('list_group', 'List Group Example', True, [
         Field('inner_l', 'Inner List Field', str),
     ])),
+    Group(
+        'a',
+        'A',
+        True,
+        fields=[
+            ListGroup(Group(
+                'b',
+                'b',
+                True,
+                fields=[Field('foo', 'Foo', str)],
+            )),
+        ],
+    ),
 ]
 
 example_group = Group('GeneratedType', 'Generated Type', True, example_fields)
@@ -153,7 +176,7 @@ class TestConstructDataclassFromDict:
         foo = "foo"
         sel = SelEnumGenerated.A
         out = OutCls(foo=foo, main=mainGroup, other=otherGroup, sel=sel,
-                     list_group=ListGroupExampleGenerated('inner'))
+                     list_group=ListGroupExampleGenerated('inner'), a=None)
         assert out.main.inner == "hello"
         assert out.other.inner_b == "World"
         assert out.sel.value == SelEnum.A.value
@@ -163,7 +186,7 @@ class TestConstructDataclassFromDict:
 
         with pytest.raises(TypeError) as e:
             out = OutCls()
-        assert "TypeError(\"__init__() missing 4 required positional arguments: 'foo', 'main', 'other', and 'list_group'\")" in str(
+        assert "TypeError(\"__init__() missing 5 required positional arguments: 'foo', 'main', 'other', 'list_group', and 'a'\")" in str(
             e)
 
     def test_should_parse_json_to_class_using_field_data(self):
@@ -195,6 +218,7 @@ class TestConfigGeneratorUi:
         config_ui.generate_widgets()
         config_ui.field_inputs[3][1][0].value = 3
         config_ui.field_inputs[6][1][0].value = 3
+        config_ui.field_inputs[7][1][0][1][0].value = 1
         data = config_ui.get_data_dict()
         print(data)
         assert data == {
@@ -217,37 +241,9 @@ class TestConfigGeneratorUi:
                 {'inner_l': ''},
                 {'inner_l': ''},
             ],
+            "a": {
+                "b": [
+                    {"foo": ""},
+                ]
+            }
         }
-
-
-# class TestStruct:
-
-#     @pytest.fixture(autouse=True)
-#     def _setup(self) -> None:
-#         self.example_dict = {
-#             "foo": "Foo",
-#             "bar": {
-#                 "a": 1,
-#                 "b": 2,
-#                 "c": 3,
-#             }
-#         }
-
-#     def test_can_create_from_dictionary(self):
-#         NewStruct = Struct(self.example_dict)
-#         assert isinstance(NewStruct, # object)
-
-#     def test_stores_variable_types(self):
-#         NewStruct = Struct(self.example_dict)
-#         print(dir(NewStruct))
-#         assert NewStruct.__annotations__ == {}
-
-#     # def test_can_create_instance_of_struct(self):
-#     #     NewStruct = Struct(self.example_dict)
-#     #     struct = NewStruct()
-#     #     assert isinstance(struct, # NewStruct)
-
-#     # def test_can_access_properties(self):
-#     #     NewStruct = Struct(self.example_dict)
-#     #     struct = NewStruct()
-#     #     assert struct.foo == "bar"
