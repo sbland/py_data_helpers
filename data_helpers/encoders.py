@@ -32,6 +32,8 @@ class AdvancedJsonEncoder(json.JSONEncoder):
             return asdict(obj)
         elif isinstance(obj, np.ndarray):
             return obj.tolist()
+        elif isinstance(obj, np.bool_):
+            return bool(obj)
             # TODO: Check why we did this
             # if obj.dtype in [np.integer, np.floating, np.character, np.float64]:
             #     return '[' + ','.join([str(i) for i in obj.tolist()]) + ']'
