@@ -1,4 +1,4 @@
-from dataclasses import is_dataclass
+from dataclasses import asdict, is_dataclass, replace
 
 import numpy as np
 
@@ -65,4 +65,24 @@ def get_nested_val(data: dict, location_str: str):
             else:
                 out = [get_nested_val(o, '.'.join(loc_arr[i + 1])) for o in out]
             break
+    return out
+
+
+def merge_dataclasses(a, b):
+    assert is_dataclass(a) and is_dataclass(b)
+    out = replace(a)
+    for k in asdict(b).keys():
+        v_b = getattr(b, k)
+        v_a = getattr(a, k)
+        if v_a is None:
+            v = v_b
+        elif type(v_a) in [int, str, bool]:
+            v = v_b
+        elif is_dataclass(v_a):
+            v = merge_dataclasses(v_a, v_b)
+        else:
+            print(type(v_a))
+            raise ValueError("Invalid type")
+        setattr(out, k, v) if v is not None else 0
+
     return out
