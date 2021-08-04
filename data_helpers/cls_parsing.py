@@ -62,8 +62,12 @@ def rsetattr(obj: object, attr: Union[str, List[str]], val: Any):
         target[int(post)] = val
     elif isinstance(target, dict):
         target[post] = val
-    else:
+    elif is_dataclass(target):
         setattr(target, post, val)
+    elif target is None:
+        raise ValueError(f"{pre} is None")
+    else:
+        raise ValueError(f"Unrecognised Type {pre}")
     return obj_copy
 
 
