@@ -1,8 +1,9 @@
 
-from typing import NamedTuple
+from dataclasses import dataclass
+from typing import Any, NamedTuple
 
 from data_helpers.fill_np_array import fill_np_array_with_cls
-from data_helpers.dictionary_helpers import get_nested_val
+from data_helpers.dictionary_helpers import get_nested_val, merge_dataclasses
 
 
 def test_get_nested_args_from_dict():
@@ -78,3 +79,53 @@ def test_get_nested_arg_from_list_with_wildcard():
     result = get_nested_val(data, 'deepmatrix._.1._')
     assert result == [[3, 4], [7, 8]]
     result = get_nested_val(data, 'dictlist._.foo')
+
+
+class TestMergeDataclasses:
+
+    @dataclass
+    class Inner:
+        a: int = None
+        b: int = None
+
+    @dataclass
+    class Foo:
+        foo: int = None
+        bar: int = None
+        inner: Any = None
+
+    def test_can_merge_nested_dataclasses(self):
+        a = self.Foo(foo=1)
+        b = self.Foo(bar=1)
+        c = merge_dataclasses(a, b)
+        assert c.foo == 1
+        assert c.bar == 1
+
+    def test_can_merge_nested_dataclasses_left_clash(self):
+        a = self.Foo(foo=1)
+        b = self.Foo(foo=2, bar=1)
+        c = merge_dataclasses(a, b)
+        assert c.foo == 2
+        assert c.bar == 1
+
+    def test_can_merge_nested_dataclasses_nested(self):
+        a = self.Foo(foo=1)
+        b = self.Foo(inner=self.Inner(1))
+        c = merge_dataclasses(a, b)
+        assert c.foo == 1
+        assert c.inner.a == 1
+
+    def test_can_merge_nested_dataclasses_nested_clash(self):
+        a = self.Foo(foo=1, inner=self.Inner(2))
+        b = self.Foo(inner=self.Inner(1))
+        c = merge_dataclasses(a, b)
+        assert c.foo == 1
+        assert c.inner.a == 1
+
+    def test_can_merge_nested_dataclasses_nested_clash_overlap(self):
+        a = self.Foo(foo=1, inner=self.Inner(None, 2))
+        b = self.Foo(inner=self.Inner(1))
+        c = merge_dataclasses(a, b)
+        assert c.foo == 1
+        assert c.inner.a == 1
+        assert c.inner.b == 2

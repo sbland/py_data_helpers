@@ -1,6 +1,8 @@
 import numpy as np
 from typing import NamedTuple
 
+BASE_TYPES = [float, int, str, bool]
+
 
 def isNamedTuple(t):
     '''helper function to check if t is a named tuple.

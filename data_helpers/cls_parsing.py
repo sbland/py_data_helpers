@@ -70,8 +70,12 @@ def rsetattr(obj: object, attr: Union[str, List[str]], val: Any, create_missing_
         target[int(post)] = val
     elif isinstance(target, dict):
         target[post] = val
-    else:
+    elif is_dataclass(target):
         setattr(target, post, val)
+    elif target is None:
+        raise ValueError(f"{pre} is None")
+    else:
+        raise ValueError(f"Unrecognised Type {pre}")
     return obj_copy
 
 
@@ -122,9 +126,9 @@ def parse_list_val(f, t, v, strict=False):
             if type(item_type) in [type(List), type(Sequence), type(CSequence)]:
                 a = type(item_type)
         if is_dataclass(item_type):
-            return [dict_to_cls(vi, item_type, strict) for vi in v]
+            return [dict_to_cls(vi, item_type, strict) or item_type() for vi in v]
         if item_type.__bases__[0].__name__ == 'tuple':
-            return [dict_to_cls(vi, item_type, strict) for vi in v]
+            return [dict_to_cls(vi, item_type, strict) or item_type() for vi in v]
     except AttributeError as e:
         warn(f"Invalid type: {t}, {f}: {v}")
         raise e
@@ -136,7 +140,7 @@ def parse_named_tuple_val(f, t, v, strict=False):
     # run recursive dict_to_cls
     if strict and not isinstance(v, dict):
         raise TypeError('{} must be {}'.format(f, t))
-    return dict_to_cls(v, t, strict)
+    return dict_to_cls(v, t, strict) or t()
 
 
 def parse_dataclass_val(f, t, v, strict=False):
@@ -144,7 +148,7 @@ def parse_dataclass_val(f, t, v, strict=False):
     # run recursive dict_to_cls
     if strict and not isinstance(v, dict):
         raise TypeError('{} must be {}'.format(f, t))
-    return dict_to_cls(v, t, strict)
+    return dict_to_cls(v, t, strict) or t()
 
 
 def parse_enum_val(f, t, v, strict=False):
@@ -252,6 +256,8 @@ def get_parser(t) -> Callable[[str, type, Any, bool], object]:
 def dict_to_cls(data: dict, Cls, strict=False):
     """Parses a nested dictionary to a specific class using class attributes"""
     if not isinstance(data, dict):
+        if data is None:
+            return None
         raise Exception('Data is invalid {}'.format(type(data)))
 
     cls_fields = [f for (f, t) in Cls.__annotations__.items() if f in data]
