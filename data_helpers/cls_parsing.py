@@ -41,7 +41,7 @@ def rgetattr(obj: object, attr: Union[str, List[str]], *args):
     return reduce(_getattr, [obj] + attr_list)
 
 
-def rsetattr(obj: object, attr: Union[str, List[str]], val: Any):
+def rsetattr(obj: object, attr: Union[str, List[str]], val: Any, create_missing_dicts: bool = False):
     """Set nested attributes with dot string path or string list
 
     https://stackoverflow.com/questions/31174295/getattr-and-setattr-on-nested-subobjects-chained-properties
@@ -57,7 +57,15 @@ def rsetattr(obj: object, attr: Union[str, List[str]], val: Any):
     pre, _, post = [attr[0], '.', '.'.join(attr[1:])] if isinstance(attr, list) \
         else attr.rpartition('.') if isinstance(attr, str) else [None, None, attr]
     # target = deepcopy(rgetattr(obj, pre) if pre else obj)
-    target = rgetattr(obj_copy, pre) if pre else obj_copy
+    try:
+        target = rgetattr(obj_copy, pre) if pre else obj_copy
+    except AttributeError as e:
+        if create_missing_dicts:
+            rsetattr(obj, pre, {}, True)
+            target = rgetattr(obj_copy, pre) if pre else obj_copy
+        else:
+            print(f"Missing attribute for {pre}")
+            raise e
     if isinstance(target, list):
         target[int(post)] = val
     elif isinstance(target, dict):
