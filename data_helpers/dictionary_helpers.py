@@ -2,7 +2,7 @@ from dataclasses import asdict, is_dataclass, replace
 
 import numpy as np
 
-from data_helpers.comparisons import BASE_TYPES, isNamedTuple
+from data_helpers.comparisons import BASE_TYPES, isNamedTuple, is_enum
 
 
 def get_val_from_obj(obj, k):
@@ -76,7 +76,7 @@ def merge_dataclasses(a, b):
         v_a = getattr(a, k)
         if v_a is None:
             v = v_b
-        elif type(v_a) in BASE_TYPES:
+        elif type(v_a) in BASE_TYPES or is_enum(type(v_a)):
             v = v_b
         elif is_dataclass(v_a):
             v = merge_dataclasses(v_a, v_b)

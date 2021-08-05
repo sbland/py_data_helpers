@@ -1,4 +1,3 @@
-
 try:
     # From python 3.9+ typing is replaced with generics (PEP 585).
     # Unfortunately this breaks a lot of this code so we attempt to bridge between the two.
@@ -8,7 +7,6 @@ except:
     pass
 
 from collections.abc import Sequence as CSequence
-from enum import Enum
 import enum
 from warnings import warn
 from dataclasses import asdict, is_dataclass, replace
@@ -16,6 +14,13 @@ from typing import Any, Callable, NamedTuple, List, Sequence, Union
 from copy import deepcopy
 from functools import reduce
 import numpy as np
+from data_helpers.comparisons import (
+    is_enum,
+    is_base_cls,
+    is_iterable,
+    is_named_tuple,
+    is_union,
+)
 
 from data_helpers.dictionary_helpers import get_nested_val
 from data_helpers.comparisons import isNamedTuple
@@ -98,6 +103,8 @@ def rdelattr(obj: object, attr: Union[str, List[str]]):
     elif isinstance(target, dict):
         if post in target:
             del target[post]
+    elif target is None:
+        return obj_copy
     else:
         setattr(target, post, None)
     return obj_copy
@@ -161,57 +168,6 @@ def parse_enum_val(f, t, v, strict=False):
         return next(e for e in t if e.value == v)
     except StopIteration:
         raise ValueError(f'{v} is not a member of enum {t}')
-
-
-def is_union(t) -> bool:
-    if get_origin:
-        if get_origin(t) == Union:
-            return True
-    else:
-        if t.__args__:
-            True
-    return False
-
-
-def is_iterable(t) -> bool:
-    if get_origin:
-        if get_origin(t) == list:
-            return True
-        if get_origin(t) == Sequence:
-            return True
-        if get_origin(t) == CSequence:
-            return True
-    # Py < 3.9
-    else:
-        if type(t) == type(List):
-            return True
-        if type(t) == type(Sequence):
-            return True
-        if type(t) == type(CSequence):
-            return True
-    return False
-
-
-def is_enum(t) -> bool:
-    if issubclass(t, Enum):
-        return True
-    return False
-
-
-def is_named_tuple(t) -> bool:
-    try:
-        # A hack to check if type is a named tuple
-        if t.__bases__ and t.__bases__[0].__name__ == 'tuple':
-            return True
-    except AttributeError:
-        pass
-    return False
-
-
-def is_base_cls(t) -> bool:
-    if t in [int, float, str, bool]:
-        return True
-    return False
 
 
 def get_parser(t) -> Callable[[str, type, Any, bool], object]:
