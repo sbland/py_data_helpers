@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="data_helpers",
-    version="0.0.8",
+    version="0.0.9",
     author="sbland",
     author_email="sblandcouk@gmail.com",
     description="A set of helpers for working with various datatypes",
