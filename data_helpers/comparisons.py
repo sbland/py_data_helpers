@@ -25,6 +25,10 @@ def is_union(t) -> bool:
 
 
 def is_iterable(t) -> bool:
+    if t == type([]):
+        return True
+    if t == type((1,)):
+        return True
     if get_origin:
         if get_origin(t) == list:
             return True

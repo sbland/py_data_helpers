@@ -4,7 +4,7 @@ import numpy as np
 
 from data_helpers.fill_np_array import fill_np_array_with_cls
 
-from data_helpers.comparisons import are_equal_safe, compare_named_tuples, tuples_are_equal
+from data_helpers.comparisons import are_equal_safe, compare_named_tuples, is_iterable, tuples_are_equal
 
 
 def test_are_equal_safe_floats():
@@ -123,3 +123,8 @@ def test_tuples_are_equal():
     c = A(2)
     assert tuples_are_equal(a, b) is False
     assert tuples_are_equal(b, c) is True
+
+
+def test_is_iterable():
+    assert is_iterable(type([1, 2, 3]))
+    assert is_iterable(type((1, 2, 3)))
