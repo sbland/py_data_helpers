@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Any, NamedTuple
 
 from data_helpers.fill_np_array import fill_np_array_with_cls
-from data_helpers.dictionary_helpers import get_nested_val, merge_dataclasses
+from data_helpers.dictionary_helpers import ListMergeMethods, get_nested_val, merge_dataclasses, merge_dictionaries
 
 
 def test_get_nested_args_from_dict():
@@ -129,3 +129,164 @@ class TestMergeDataclasses:
         assert c.foo == 1
         assert c.inner.a == 1
         assert c.inner.b == 2
+
+
+a = {
+    "inner": {
+        "a": 1,
+        "b": 2,
+    },
+    "foo": 1,
+    "bar": 2,
+}
+b = {
+    "inner": {
+        "a": 1,
+        "b": 2,
+    },
+    "foo": 1,
+    "bar": 2,
+}
+
+
+class TestMergeDictionaries:
+
+    def test_can_merge_nested_dictionaries(self):
+
+        a = {
+            "foo": 1,
+        }
+        b = {
+            "bar": 1,
+        }
+        c = merge_dictionaries(a, b)
+        assert c["foo"] == 1
+        assert c["bar"] == 1
+
+    def test_can_merge_nested_dictionaries_left_clash(self):
+        a = {
+            "foo": 1,
+        }
+        b = {
+            "foo": 2,
+            "bar": 1,
+        }
+        c = merge_dictionaries(a, b)
+        assert c["foo"] == 2
+        assert c["bar"] == 1
+
+    def test_can_merge_nested_dictionaries_nested(self):
+
+        a = {
+            "foo": 1,
+        }
+        b = {
+            "inner": {
+                "a": 1,
+            },
+        }
+
+        c = merge_dictionaries(a, b)
+        assert c["foo"] == 1
+        assert c["inner"]["a"] == 1
+
+    def test_can_merge_nested_dictionaries_nested_clash(self):
+        a = {
+            "foo": 1,
+            "inner": {
+                "a": 2,
+            }
+        }
+        b = {
+            "inner": {
+                "a": 1,
+            },
+        }
+
+        c = merge_dictionaries(a, b)
+        assert c["foo"] == 1
+        assert c["inner"]["a"] == 1
+
+    def test_can_merge_nested_dictionaries_nested_clash_overlap(self):
+        a = {
+            "foo": 1,
+            "inner": {
+                "a": 2,
+                "b": 3,
+            }
+        }
+        b = {
+            "inner": {
+                "a": 1,
+            },
+        }
+
+        c = merge_dictionaries(a, b)
+        assert c["foo"] == 1
+        assert c["inner"]["a"] == 1
+        assert c["inner"]["b"] == 3
+
+    def test_can_merge_nested_list(self):
+        a = {
+            "foo": 1,
+            "inner": [
+                {
+                    "id": 1,
+                    "a": 1,
+                },
+                {
+                    "id": 2,
+                    "a": 2,
+                },
+            ]
+        }
+        b = {
+            "foo": 1,
+            "inner": [
+                {
+                    "id": 1,
+                    "a": 1,
+                },
+                {
+                    "id": 2,
+                    "a": "alt",
+                },
+            ]
+        }
+
+        c = merge_dictionaries(a, b)
+        assert c["foo"] == 1
+        assert c["inner"][0]["a"] == 1
+        assert c["inner"][1]["a"] == "alt"
+
+    def test_can_merge_nested_list_merge_individual(self):
+        a = {
+            "foo": 1,
+            "inner": [
+                {
+                    "id": 1,
+                    "a": 99,
+                },
+                {
+                    "id": 2,
+                    "a": 2,
+                },
+            ]
+        }
+        b = {
+            "foo": 1,
+            "inner": [
+                {
+                    "id": 1,
+                },
+                {
+                    "id": 2,
+                    "a": "alt",
+                },
+            ]
+        }
+
+        c = merge_dictionaries(a, b, ListMergeMethods.ZIP)
+        assert c["foo"] == 1
+        assert c["inner"][0]["a"] == 99
+        assert c["inner"][1]["a"] == "alt"
