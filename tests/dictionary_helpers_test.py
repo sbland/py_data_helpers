@@ -259,7 +259,7 @@ class TestMergeDictionaries:
         assert c["inner"][0]["a"] == 1
         assert c["inner"][1]["a"] == "alt"
 
-    def test_can_merge_nested_list_merge_individual(self):
+    def test_can_merge_nested_list_merge_individual_b(self):
         a = {
             "foo": 1,
             "inner": [
@@ -290,3 +290,61 @@ class TestMergeDictionaries:
         assert c["foo"] == 1
         assert c["inner"][0]["a"] == 99
         assert c["inner"][1]["a"] == "alt"
+
+    def test_can_merge_nested_list_merge_individual_c(self):
+        a = {
+            "top": {
+                "parameters": [
+                    {
+                        "name": "hello",
+                        "other": "this"
+                    }
+                ]
+            }
+        }
+        b = {
+            "top": {
+                "parameters": [
+                    {
+                        "name": "world"
+                    }
+                ]
+            }
+        }
+
+        c = merge_dictionaries(a, b, ListMergeMethods.ZIP)
+        assert c["top"]["parameters"][0]["name"] == "world"
+        assert c["top"]["parameters"][0]["other"] == "this"
+
+
+    def test_can_merge_nested_list_merge_individual_d(self):
+        a = {
+            "top": {
+                "parameters": [
+                    1,
+                    2,
+                    3,
+                ]
+            }
+        }
+        b = {
+            "top": {
+                "parameters": [
+                    4,
+                ]
+            }
+        }
+
+        c = merge_dictionaries(a, b, ListMergeMethods.ZIP)
+        assert len(c["top"]["parameters"]) == 1
+        assert c["top"]["parameters"][0] == 4
+
+    # def test_can_merge_nested_list_merge_individual(self):
+    #     a = {'COMMENT': 'Bangor Wheat Demo', 'Land_Cover': {'nL': 4, 'layer_height_frac': [...], 'fLAI': [...]}}
+    #     b = {'COMMENT': 'Bangor Wheat Demo', 'Met': {'td_base_temperature': 0, 'inputs': {...}}, 'VERSION': 10, 'Location': {'lat': 53, 'lon': 4, 'elev': 5.0, 'albedo': 0.2, 'z_O3': 1.5, 'z_u': 10.0, 'Rsoil': 200, 'start_day': 71}, 'resistance': {'rsur_calc_method': 'multi_layer', 'rext_calc_method': 'const'}, 'soil_moisture': {'soil_texture': 'loam', 'soil': {...}, 'root': 0.4, 'pwp': -4.0, 'asw_fc': None, 'source': 'external input SWC', 'initial_swc': None}, 'carbon_allocation': {'use_carbon_allocation': True, 'a_root': 18.5, 'a_stem': 16.0, 'a_leaf': 18.0, 'b_root': -20.0, 'b_stem': -15.0, 'b_leaf': -18.5, 'gamma': 27.3, 'delta': -0.0507, ...}, 'Land_Cover': {'nL': 1, 'nP': 3, 'layer_height_frac': [...], 'height_method': 'carbon', 'LAI_method': 'carbon', 'LAI_distribution_method': 'fraction', 'leaf_emergence_multiplier': 1.8, 'SAI_method': 'estimate total', 'dvi_method': 'JULES'}}
+
+    #     c = merge_dictionaries(a, b, ListMergeMethods.ZIP)
+    #     assert c["Land_Cover"]["fLAI"] == [0.25,0.25,0.25,0.25]
+
+
+
