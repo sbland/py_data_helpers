@@ -83,6 +83,9 @@ def is_base_cls(t) -> bool:
     return False
 
 
+def is_dictionary(t) -> bool:
+    return t == type({"foo": "bar"})
+
 def isNamedTuple(t):
     '''helper function to check if t is a named tuple.
     This is not a perfect check!'''
@@ -168,3 +171,4 @@ def assert_matched_tuples(tuple_a: NamedTuple, tuple_b: NamedTuple):
     passes = (len(mismatched_tuples) == 0)
     if not passes:
         raise AssertionError('Tuples do not match: ', mismatched_tuples)
+
