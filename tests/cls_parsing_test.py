@@ -12,6 +12,8 @@ from data_helpers.cls_parsing import (
     get_parser,
     get_val_from_tuple,
     parse_base_val,
+    parse_dataclass_val,
+    parse_enum_val,
     parse_list_val,
 )
 
@@ -19,6 +21,43 @@ if sys.version_info <= (3, 9):
     list = List
     tuple = Tuple
     sequence = Sequence
+
+class DemoEnum(Enum):
+    DEFAULT="default"
+
+@pytest.mark.parametrize(['f', 't', 'v', 'result'], [
+    ('field', type(1), 1, 1),
+    ('field', type("a"), "a", "a"),
+    ('field', type(True), True, True),
+])
+def test_parse_base_val(f, t, v, result):
+    assert parse_base_val(f, t, v) == result
+
+
+@pytest.mark.parametrize(['f', 't', 'v', 'result', 'error'], [
+    ('field', type([]), [1,2,3], None, TypeError),
+    ('field', List[int], [1,2,3], [1,2,3], None),
+    # ('field', List[int], ['1','2','3'], [1,2,3], None), # TODO: fix this test
+])
+def test_parse_list_val(f, t, v, result, error):
+    if error:
+        with pytest.raises(error):
+            parse_list_val(f, t, v) == result
+    else:
+        assert parse_list_val(f, t, v) == result
+
+
+# @pytest.mark.parametrize(['f', 't', 'v', 'result', 'error'], [
+#     ('field', dataclass, [1,2,3], None, TypeError),
+# ])
+# def test_parse_dataclass_val(f, t, v, result, error):
+#     if error:
+#         with pytest.raises(error):
+#             parse_dataclass_val(f, t, v) == result
+#     else:
+#         assert parse_dataclass_val(f, t, v) == result
+
+
 
 
 def test_dict_to_cls():
@@ -276,11 +315,11 @@ class TestGetParser():
         parser = get_parser(t)
         assert parser == parse_base_val
 
-    def test_get_parser_Union_cls(self):
+    def test_get_parser_Union_enum(self):
 
-        t = Union[int, float]
+        t = Union[DemoEnum,DemoEnum]
         parser = get_parser(t)
-        assert parser == parse_base_val
+        assert parser == parse_enum_val
 
     def test_get_parser_Union_incompatible(self):
         # Should throw error if union types are not similar

@@ -120,21 +120,21 @@ def parse_base_val(f, t, v, strict=False):
 def parse_list_val(f, t, v, strict=False):
     try:
         item_type = t.__args__[0]
+    except AttributeError as e:
+        raise TypeError(f"field {f} has list type without meta data for element types")
+    try:
 
         if strict and not isinstance(v, list):
             raise TypeError('{} must be {}'.format(f, t))
-        if item_type in [int, float, str, bool]:
+
+        if is_base_cls(item_type):
             return v
-        # Py >= 3.9
-        if get_origin and get_origin(item_type) in [list, Sequence, CSequence]:
-            return [parse_list_val(f, item_type, vv) for vv in v]
-        # Py < 3.9
-        else:
-            if type(item_type) in [type(List), type(Sequence), type(CSequence)]:
-                a = type(item_type)
+        # TODO: Can we just pass this back to parse value?
+        if is_iterable(item_type):
+            return [parse_list_val(f, item_type, vi) for vi in v]
         if is_dataclass(item_type):
             return [dict_to_cls(vi, item_type, strict) or item_type() for vi in v]
-        if item_type.__bases__[0].__name__ == 'tuple':
+        if is_named_tuple(item_type):
             return [dict_to_cls(vi, item_type, strict) or item_type() for vi in v]
     except AttributeError as e:
         warn(f"Invalid type: {t}, {f}: {v}")
@@ -155,6 +155,9 @@ def parse_dataclass_val(f, t, v, strict=False):
     # run recursive dict_to_cls
     if strict and not isinstance(v, dict):
         raise TypeError('{} must be {}'.format(f, t))
+    if not v:
+        # TODO: Check this has no unwanted side effects
+        return None
     return dict_to_cls(v, t, strict) or t()
 
 
@@ -191,6 +194,7 @@ def get_parser(t) -> Callable[[str, type, Any, bool], object]:
     TypeError
         Raised if the supplied type has not been implemented
     """
+
     if is_base_cls(t):
         return parse_base_val
     if is_iterable(t):
@@ -230,6 +234,7 @@ def dict_to_cls(data: dict, Cls, strict=False):
     new_data = {}
     # f = field; t = type; v = value
     for (f, t, v) in zip(cls_fields, cls_field_types, data_values):
+        # TODO: If t is string then we need to import the type
         parser = get_parser(t)
         d = parser(f, t, v)
         new_data[f] = d
