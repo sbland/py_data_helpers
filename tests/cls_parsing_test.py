@@ -25,6 +25,12 @@ if sys.version_info <= (3, 9):
 class DemoEnum(Enum):
     DEFAULT="default"
 
+@dataclass
+class DemoDataclass:
+    foo: int
+    bar: str = "hello"
+
+
 @pytest.mark.parametrize(['f', 't', 'v', 'result'], [
     ('field', type(1), 1, 1),
     ('field', type("a"), "a", "a"),
@@ -47,15 +53,17 @@ def test_parse_list_val(f, t, v, result, error):
         assert parse_list_val(f, t, v) == result
 
 
-# @pytest.mark.parametrize(['f', 't', 'v', 'result', 'error'], [
-#     ('field', dataclass, [1,2,3], None, TypeError),
-# ])
-# def test_parse_dataclass_val(f, t, v, result, error):
-#     if error:
-#         with pytest.raises(error):
-#             parse_dataclass_val(f, t, v) == result
-#     else:
-#         assert parse_dataclass_val(f, t, v) == result
+
+
+@pytest.mark.parametrize(['f', 't', 'v', 'result', 'error'], [
+    ('field', DemoDataclass, {"foo": 1, "bar": "world"}, DemoDataclass(1, "world"), None),
+])
+def test_parse_dataclass_val(f, t, v, result, error):
+    if error:
+        with pytest.raises(error):
+            parse_dataclass_val(f, t, v) == result
+    else:
+        assert parse_dataclass_val(f, t, v) == result
 
 
 
