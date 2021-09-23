@@ -6,10 +6,11 @@ try:
 except:
     pass
 
+from inspect import isclass
 from enum import Enum
 import numpy as np
 from collections.abc import Sequence as CSequence
-from typing import NamedTuple, List, Sequence, Union
+from typing import NamedTuple, List, Sequence, Union, Tuple
 
 BASE_TYPES = [float, int, str, bool]
 
@@ -32,23 +33,36 @@ def is_iterable(t) -> bool:
     if get_origin:
         if get_origin(t) == list:
             return True
+        if get_origin(t) == tuple:
+            return True
         if get_origin(t) == Sequence:
             return True
         if get_origin(t) == CSequence:
             return True
-    # Py < 3.9
+    # Py < 3.9 # or 3.8?
     else:
+        # TODO: Check no false positives here
         if type(t) == type(List):
             return True
         if type(t) == type(Sequence):
             return True
+        if type(t) == type(Tuple):
+            return True
         if type(t) == type(CSequence):
+            return True
+
+        if t == List:
+            return True
+        if t == Sequence:
+            return True
+        if t == Tuple:
+            return True
+        if t == CSequence:
             return True
     return False
 
-
 def is_enum(t) -> bool:
-    if issubclass(t, Enum):
+    if isclass(t) and issubclass(t, Enum):
         return True
     return False
 

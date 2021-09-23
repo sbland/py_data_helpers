@@ -94,7 +94,6 @@ def merge_objects(a, b, list_method):
         elif len(b) == 0:
             v = a
         else:
-            print(list_method)
             v = merge_iterable(a, b, method=list_method)
     else:
         print(type(a))

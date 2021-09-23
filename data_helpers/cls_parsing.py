@@ -318,7 +318,7 @@ def unpack(obj):
     elif isinstance(obj, np.ndarray):
         return unpack(obj.tolist())
     elif issubclass(type(obj), enum.Enum):
-        return obj.name
+        return obj.value
     else:
         return obj
 

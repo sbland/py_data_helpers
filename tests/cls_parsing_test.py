@@ -1,3 +1,4 @@
+import typing
 import sys
 from typing import Union
 from enum import Enum
@@ -5,7 +6,14 @@ from dataclasses import dataclass
 from typing import NamedTuple, List, Sequence, Tuple
 import pytest
 
-from data_helpers.cls_parsing import dict_to_cls, _replace_recursive, get_parser, get_val_from_tuple, parse_base_val
+from data_helpers.cls_parsing import (
+    dict_to_cls,
+    _replace_recursive,
+    get_parser,
+    get_val_from_tuple,
+    parse_base_val,
+    parse_list_val,
+)
 
 if sys.version_info <= (3, 9):
     list = List
@@ -289,6 +297,11 @@ class TestGetParser():
             get_parser(t)
 
         assert "Invalid Union Type" in str(e)
+
+    def test_get_parser_typing_tuple(self):
+        t = typing.Tuple
+        parser = get_parser(t)
+        assert parser == parse_list_val
 
 
 def test_replace_recursive():
