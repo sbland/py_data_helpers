@@ -3,11 +3,13 @@ from data_helpers.list_helpers import flatten_list
 from typing import List
 from data_helpers.comparisons import is_base_cls, is_dictionary, is_iterable
 from math import isclose
+
+
 def diff(field, a, b) -> List[str]:
     changes = []
     item_type = type(a) if a is not None else type(b)
 
-    if a != b:
+    if is_iterable(type(a)) or is_iterable(type(b)) or a != b:
         if a is None or b is None:
             changes.append(f"{field}: {a} -> {b}")
         elif is_base_cls(item_type):
