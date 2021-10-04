@@ -15,6 +15,7 @@ from copy import deepcopy
 from functools import reduce
 import numpy as np
 from data_helpers.comparisons import (
+    is_dictionary,
     is_enum,
     is_base_cls,
     is_iterable,
@@ -204,6 +205,8 @@ def get_parser(t) -> Callable[[str, type, Any, bool], object]:
             raise ValueError("Invalid Union Type: Can only parse Unions of base classes")
         return get_parser(t.__args__[0])
     if is_dataclass(t):
+        return parse_dataclass_val
+    if is_dictionary(t):
         return parse_dataclass_val
     if is_enum(t):
         return parse_enum_val
