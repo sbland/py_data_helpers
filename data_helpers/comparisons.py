@@ -59,6 +59,9 @@ def is_iterable(t) -> bool:
             return True
         if t == CSequence:
             return True
+
+    if t == np.ndarray:
+        return True
     return False
 
 def is_enum(t) -> bool:
