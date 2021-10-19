@@ -30,6 +30,10 @@ class DemoDataclass:
     foo: int
     bar: str = "hello"
 
+@dataclass
+class DemoDataclassSimple:
+    foo: int = 0
+
 
 @pytest.mark.parametrize(['f', 't', 'v', 'result'], [
     ('field', type(1), 1, 1),
@@ -57,6 +61,8 @@ def test_parse_list_val(f, t, v, result, error):
 
 @pytest.mark.parametrize(['f', 't', 'v', 'result', 'error'], [
     ('field', DemoDataclass, {"foo": 1, "bar": "world"}, DemoDataclass(1, "world"), None),
+    ('field', DemoDataclass, {}, None, None),
+    ('field', DemoDataclassSimple, {}, DemoDataclassSimple(), None),
 ])
 def test_parse_dataclass_val(f, t, v, result, error):
     if error:
@@ -86,6 +92,7 @@ def test_dict_to_cls():
 
     new_object = dict_to_cls(d, A)
     assert new_object == A(B('bar'), 1)
+
 
 
 def test_dict_to_dataclass():
@@ -154,6 +161,27 @@ def test_dict_to_cls_nested_named_tuple():
 
     new_object = dict_to_cls(d, Wrap)
     assert new_object == Wrap(a=A(lat=52.2, lon=-1.12))
+
+def test_dict_to_cls_empty():
+    class B(NamedTuple):
+        parameters: List[str] = []
+
+    class A(NamedTuple):
+        lat: float = None
+        lon: float = None
+
+    @dataclass
+    class Wrap():
+        a: A = None
+        b: B = None
+
+    d = {
+        "a": {},
+    }
+
+    new_object = dict_to_cls(d, Wrap)
+    assert new_object == Wrap(a=A(lat=None, lon=None))
+
 
 
 def test_dict_to_cls_nested_list_of_lists():

@@ -158,6 +158,14 @@ def parse_dataclass_val(f, t, v, strict=False):
         raise TypeError('{} must be {}'.format(f, t))
     if not v:
         # TODO: Check this has no unwanted side effects
+        try:
+            return t()
+        except TypeError as e:
+            if "missing" in str(e):
+                # We are missing required inputs to this class
+                return None
+            else:
+                raise e
         return None
     return dict_to_cls(v, t, strict) or t()
 
