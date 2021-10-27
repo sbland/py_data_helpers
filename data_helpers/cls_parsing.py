@@ -60,20 +60,29 @@ def rsetattr(obj: object, attr: Union[str, List[str]], val: Any, create_missing_
     """
     # obj_copy = deepcopy(obj) # deep copy takes 10 times as long!
     obj_copy = obj
+    # pre - path to current location
+    # post - current key
     pre, _, post = [attr[0], '.', '.'.join(attr[1:])] if isinstance(attr, list) \
         else attr.rpartition('.') if isinstance(attr, str) else [None, None, attr]
     # target = deepcopy(rgetattr(obj, pre) if pre else obj)
     try:
         target = rgetattr(obj_copy, pre) if pre else obj_copy
+        if target is None:
+            raise AttributeError(f'{pre} not found')
     except AttributeError as e:
         if create_missing_dicts:
-            rsetattr(obj, pre, {}, True)
+            new_dict = {} if not post.isnumeric() else []
+            rsetattr(obj, pre, new_dict, True)
             target = rgetattr(obj_copy, pre) if pre else obj_copy
         else:
             print(f"Missing attribute for {pre}")
             raise e
     if isinstance(target, list):
-        target[int(post)] = val
+        index = int(post)
+        if len(target) - 1 < index:
+            for _ in range(len(target) - 1, index):
+                target.append(None)
+        target[index] = val
     elif isinstance(target, dict):
         target[post] = val
     elif is_dataclass(target):

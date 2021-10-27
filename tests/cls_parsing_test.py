@@ -15,6 +15,7 @@ from data_helpers.cls_parsing import (
     parse_dataclass_val,
     parse_enum_val,
     parse_list_val,
+    rsetattr,
 )
 
 if sys.version_info <= (3, 9):
@@ -434,3 +435,39 @@ def test_get_nested_args_from_tuple():
     assert result == 2
     result = get_val_from_tuple(tup, 'a.val')
     assert result == 1
+
+class TestRsetattr:
+
+    def test_can_set_base_attribute(self):
+        base = {}
+        out = rsetattr(base, 'foo', 'bar')
+        assert out['foo'] == 'bar'
+
+    def test_can_set_nested_attribute(self):
+        base = { "foo": { }}
+        out = rsetattr(base, 'foo.bar', 'bar')
+        assert out['foo']['bar'] == 'bar'
+        base = { "foo": { "bar": {} }}
+        out = rsetattr(base, 'foo.bar.zoo', 'bar')
+        assert out['foo']['bar']['zoo'] == 'bar'
+
+    def test_can_create_missing_dicts(self):
+        base = { }
+        out = rsetattr(base, 'foo.bar', 'bar', create_missing_dicts=True)
+        assert out['foo']['bar'] == 'bar'
+
+    def test_can_create_missing_lists(self):
+        base = { }
+        out = rsetattr(base, 'foo.0', 'bar', create_missing_dicts=True)
+        print(out)
+        assert out['foo'][0] == 'bar'
+
+    def test_can_create_missing_lists_padded(self):
+        base = { }
+        out = rsetattr(base, 'foo.3', 'bar', create_missing_dicts=True)
+        print(out)
+        assert out['foo'][3] == 'bar'
+        assert out['foo'][0] == None
+        assert len(out['foo']) == 4
+
+
