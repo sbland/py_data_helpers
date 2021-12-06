@@ -9,6 +9,7 @@ setuptools.setup(
     author="sbland",
     author_email="sblandcouk@gmail.com",
     description="A set of helpers for working with various datatypes",
+    long_description=long_description,
     install_requires=[
         'numpy'
     ],
