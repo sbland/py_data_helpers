@@ -10,6 +10,7 @@ else
         git stash save -u "hold_build_deploy"
     else
         echo "Working directory not clean. Commit changes or accept stashing changes." && exit 1;
+    fi
 fi
 bumpversion $1
 python -m build
