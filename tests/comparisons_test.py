@@ -152,5 +152,15 @@ def test_is_iterable(value, result):
     (type("a"), False),
     ("a", False),
 ])
-def test_is_enum(value, result):
-    assert is_enum(value) == result
+
+
+class TestIsEnum:
+    def test_is_enum(self):
+        class ExampleEnum(Enum):
+            FOO = "foo"
+        assert is_enum(ExampleEnum)
+
+    def test_is_enum_not(self):
+        class ExampleClass():
+            pass
+        assert not is_enum(ExampleClass)

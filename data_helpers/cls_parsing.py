@@ -1,16 +1,7 @@
-try:
-    # From python 3.9+ typing is replaced with generics (PEP 585).
-    # Unfortunately this breaks a lot of this code so we attempt to bridge between the two.
-    # We try importing get_origin then use if available below
-    from typing import get_origin
-except:
-    pass
-
-from collections.abc import Sequence as CSequence
 import enum
 from warnings import warn
 from dataclasses import asdict, is_dataclass, replace
-from typing import Any, Callable, NamedTuple, List, Sequence, Union
+from typing import Any, Callable, NamedTuple, List, Union
 from copy import deepcopy
 from functools import reduce
 import numpy as np
