@@ -15,6 +15,7 @@ fi
 bumpversion $1
 python -m build
 twine upload dist/*
+git push
 
 if [ -z "$(git status --porcelain)" ]; then
     echo "Working directory is clean"
