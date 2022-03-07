@@ -1,10 +1,18 @@
+import pytest
 from typing import NamedTuple, List
+from collections.abc import Sequence as CSequence
+import typing
+from enum import Enum
 
 import numpy as np
 
 from data_helpers.fill_np_array import fill_np_array_with_cls
 
-from data_helpers.comparisons import are_equal_safe, compare_named_tuples, tuples_are_equal
+from data_helpers.comparisons import are_equal_safe, compare_named_tuples, is_enum, is_iterable, tuples_are_equal
+
+
+class DemoEnum(Enum):
+    DEFAULT = "default"
 
 
 def test_are_equal_safe_floats():
@@ -123,3 +131,36 @@ def test_tuples_are_equal():
     c = A(2)
     assert tuples_are_equal(a, b) is False
     assert tuples_are_equal(b, c) is True
+
+
+@pytest.mark.parametrize(['value', 'result'], [
+    (type([1, 2, 3]), True),
+    (type((1, 2, 3)), True),
+    (typing.List, True),
+    (typing.Tuple, True),
+    (typing.Sequence, True),
+    (type("a"), False),
+    (type(1), False),
+])
+def test_is_iterable(value, result):
+    assert is_iterable(value) == result
+
+
+@ pytest.mark.parametrize(['value', 'result'], [
+    (DemoEnum, True),
+    (type(1), False),
+    (type("a"), False),
+    ("a", False),
+])
+
+
+class TestIsEnum:
+    def test_is_enum(self):
+        class ExampleEnum(Enum):
+            FOO = "foo"
+        assert is_enum(ExampleEnum)
+
+    def test_is_enum_not(self):
+        class ExampleClass():
+            pass
+        assert not is_enum(ExampleClass)

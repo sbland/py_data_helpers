@@ -5,10 +5,11 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="data_helpers",
-    version="0.0.6",
+    version="0.0.18",
     author="sbland",
     author_email="sblandcouk@gmail.com",
     description="A set of helpers for working with various datatypes",
+    long_description=long_description,
     install_requires=[
         'numpy'
     ],

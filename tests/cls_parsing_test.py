@@ -1,3 +1,4 @@
+import typing
 import sys
 from typing import Union
 from enum import Enum
@@ -5,12 +6,73 @@ from dataclasses import dataclass
 from typing import NamedTuple, List, Sequence, Tuple
 import pytest
 
-from data_helpers.cls_parsing import dict_to_cls, _replace_recursive, get_parser, get_val_from_tuple, parse_base_val, is_enum
+from data_helpers.cls_parsing import (
+    dict_to_cls,
+    _replace_recursive,
+    get_parser,
+    get_val_from_tuple,
+    parse_base_val,
+    parse_dataclass_val,
+    parse_enum_val,
+    parse_list_val,
+    rsetattr,
+)
 
 if sys.version_info <= (3, 9):
     list = List
     tuple = Tuple
     sequence = Sequence
+
+class DemoEnum(Enum):
+    DEFAULT="default"
+
+@dataclass
+class DemoDataclass:
+    foo: int
+    bar: str = "hello"
+
+@dataclass
+class DemoDataclassSimple:
+    foo: int = 0
+
+
+@pytest.mark.parametrize(['f', 't', 'v', 'result'], [
+    ('field', type(1), 1, 1),
+    ('field', type("a"), "a", "a"),
+    ('field', type(True), True, True),
+])
+def test_parse_base_val(f, t, v, result):
+    assert parse_base_val(f, t, v) == result
+
+
+@pytest.mark.parametrize(['f', 't', 'v', 'result', 'error'], [
+    ('field', type([]), [1,2,3], None, TypeError),
+    ('field', List[int], [1,2,3], [1,2,3], None),
+    # ('field', List[int], ['1','2','3'], [1,2,3], None), # TODO: fix this test
+])
+def test_parse_list_val(f, t, v, result, error):
+    if error:
+        with pytest.raises(error):
+            parse_list_val(f, t, v) == result
+    else:
+        assert parse_list_val(f, t, v) == result
+
+
+
+
+@pytest.mark.parametrize(['f', 't', 'v', 'result', 'error'], [
+    ('field', DemoDataclass, {"foo": 1, "bar": "world"}, DemoDataclass(1, "world"), None),
+    ('field', DemoDataclass, {}, None, None),
+    ('field', DemoDataclassSimple, {}, DemoDataclassSimple(), None),
+])
+def test_parse_dataclass_val(f, t, v, result, error):
+    if error:
+        with pytest.raises(error):
+            parse_dataclass_val(f, t, v) == result
+    else:
+        assert parse_dataclass_val(f, t, v) == result
+
+
 
 
 def test_dict_to_cls():
@@ -31,6 +93,7 @@ def test_dict_to_cls():
 
     new_object = dict_to_cls(d, A)
     assert new_object == A(B('bar'), 1)
+
 
 
 def test_dict_to_dataclass():
@@ -99,6 +162,27 @@ def test_dict_to_cls_nested_named_tuple():
 
     new_object = dict_to_cls(d, Wrap)
     assert new_object == Wrap(a=A(lat=52.2, lon=-1.12))
+
+def test_dict_to_cls_empty():
+    class B(NamedTuple):
+        parameters: List[str] = []
+
+    class A(NamedTuple):
+        lat: float = None
+        lon: float = None
+
+    @dataclass
+    class Wrap():
+        a: A = None
+        b: B = None
+
+    d = {
+        "a": {},
+    }
+
+    new_object = dict_to_cls(d, Wrap)
+    assert new_object == Wrap(a=A(lat=None, lon=None))
+
 
 
 def test_dict_to_cls_nested_list_of_lists():
@@ -268,11 +352,11 @@ class TestGetParser():
         parser = get_parser(t)
         assert parser == parse_base_val
 
-    def test_get_parser_Union_cls(self):
+    def test_get_parser_Union_enum(self):
 
-        t = Union[int, float]
+        t = Union[DemoEnum,DemoEnum]
         parser = get_parser(t)
-        assert parser == parse_base_val
+        assert parser == parse_enum_val
 
     def test_get_parser_Union_incompatible(self):
         # Should throw error if union types are not similar
@@ -289,6 +373,11 @@ class TestGetParser():
             get_parser(t)
 
         assert "Invalid Union Type" in str(e)
+
+    def test_get_parser_typing_tuple(self):
+        t = typing.Tuple
+        parser = get_parser(t)
+        assert parser == parse_list_val
 
 
 def test_replace_recursive():
@@ -347,14 +436,38 @@ def test_get_nested_args_from_tuple():
     result = get_val_from_tuple(tup, 'a.val')
     assert result == 1
 
+class TestRsetattr:
 
-class TestIsEnum:
-    def test_is_enum(self):
-        class ExampleEnum(Enum):
-            FOO = "foo"
-        assert is_enum(ExampleEnum)
+    def test_can_set_base_attribute(self):
+        base = {}
+        out = rsetattr(base, 'foo', 'bar')
+        assert out['foo'] == 'bar'
 
-    def test_is_enum_not(self):
-        class ExampleClass():
-            pass
-        assert not is_enum(ExampleClass)
+    def test_can_set_nested_attribute(self):
+        base = { "foo": { }}
+        out = rsetattr(base, 'foo.bar', 'bar')
+        assert out['foo']['bar'] == 'bar'
+        base = { "foo": { "bar": {} }}
+        out = rsetattr(base, 'foo.bar.zoo', 'bar')
+        assert out['foo']['bar']['zoo'] == 'bar'
+
+    def test_can_create_missing_dicts(self):
+        base = { }
+        out = rsetattr(base, 'foo.bar', 'bar', create_missing_dicts=True)
+        assert out['foo']['bar'] == 'bar'
+
+    def test_can_create_missing_lists(self):
+        base = { }
+        out = rsetattr(base, 'foo.0', 'bar', create_missing_dicts=True)
+        print(out)
+        assert out['foo'][0] == 'bar'
+
+    def test_can_create_missing_lists_padded(self):
+        base = { }
+        out = rsetattr(base, 'foo.3', 'bar', create_missing_dicts=True)
+        print(out)
+        assert out['foo'][3] == 'bar'
+        assert out['foo'][0] == None
+        assert len(out['foo']) == 4
+
+

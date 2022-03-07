@@ -1,22 +1,18 @@
-
-import inspect
-try:
-    # From python 3.9+ typing is replaced with generics (PEP 585).
-    # Unfortunately this breaks a lot of this code so we attempt to bridge between the two.
-    # We try importing get_origin then use if available below
-    from typing import get_origin
-except:
-    pass
-
-from collections.abc import Sequence as CSequence
-from enum import Enum
 import enum
 from warnings import warn
 from dataclasses import asdict, is_dataclass, replace
-from typing import Any, Callable, NamedTuple, List, Sequence, Union
+from typing import Any, Callable, NamedTuple, List, Union
 from copy import deepcopy
 from functools import reduce
 import numpy as np
+from data_helpers.comparisons import (
+    is_dictionary,
+    is_enum,
+    is_base_cls,
+    is_iterable,
+    is_named_tuple,
+    is_union,
+)
 
 from data_helpers.dictionary_helpers import get_nested_val
 from data_helpers.comparisons import isNamedTuple
@@ -42,7 +38,7 @@ def rgetattr(obj: object, attr: Union[str, List[str]], *args):
     return reduce(_getattr, [obj] + attr_list)
 
 
-def rsetattr(obj: object, attr: Union[str, List[str]], val: Any):
+def rsetattr(obj: object, attr: Union[str, List[str]], val: Any, create_missing_dicts: bool = False):
     """Set nested attributes with dot string path or string list
 
     https://stackoverflow.com/questions/31174295/getattr-and-setattr-on-nested-subobjects-chained-properties
@@ -55,16 +51,37 @@ def rsetattr(obj: object, attr: Union[str, List[str]], val: Any):
     """
     # obj_copy = deepcopy(obj) # deep copy takes 10 times as long!
     obj_copy = obj
+    # pre - path to current location
+    # post - current key
     pre, _, post = [attr[0], '.', '.'.join(attr[1:])] if isinstance(attr, list) \
         else attr.rpartition('.') if isinstance(attr, str) else [None, None, attr]
     # target = deepcopy(rgetattr(obj, pre) if pre else obj)
-    target = rgetattr(obj_copy, pre) if pre else obj_copy
+    try:
+        target = rgetattr(obj_copy, pre) if pre else obj_copy
+        if target is None:
+            raise AttributeError(f'{pre} not found')
+    except AttributeError as e:
+        if create_missing_dicts:
+            new_dict = {} if not post.isnumeric() else []
+            rsetattr(obj, pre, new_dict, True)
+            target = rgetattr(obj_copy, pre) if pre else obj_copy
+        else:
+            print(f"Missing attribute for {pre}")
+            raise e
     if isinstance(target, list):
-        target[int(post)] = val
+        index = int(post)
+        if len(target) - 1 < index:
+            for _ in range(len(target) - 1, index):
+                target.append(None)
+        target[index] = val
     elif isinstance(target, dict):
         target[post] = val
-    else:
+    elif is_dataclass(target):
         setattr(target, post, val)
+    elif target is None:
+        raise ValueError(f"{pre} is None")
+    else:
+        raise ValueError(f"Unrecognised Type {pre}")
     return obj_copy
 
 
@@ -87,6 +104,8 @@ def rdelattr(obj: object, attr: Union[str, List[str]]):
     elif isinstance(target, dict):
         if post in target:
             del target[post]
+    elif target is None:
+        return obj_copy
     else:
         setattr(target, post, None)
     return obj_copy
@@ -102,22 +121,22 @@ def parse_base_val(f, t, v, strict=False):
 def parse_list_val(f, t, v, strict=False):
     try:
         item_type = t.__args__[0]
+    except AttributeError as e:
+        raise TypeError(f"field {f} has list type without meta data for element types")
+    try:
 
         if strict and not isinstance(v, list):
             raise TypeError('{} must be {}'.format(f, t))
-        if item_type in [int, float, str, bool]:
+
+        if is_base_cls(item_type):
             return v
-        # Py >= 3.9
-        if get_origin and get_origin(item_type) in [list, Sequence, CSequence]:
-            return [parse_list_val(f, item_type, vv) for vv in v]
-        # Py < 3.9
-        else:
-            if type(item_type) in [type(List), type(Sequence), type(CSequence)]:
-                a = type(item_type)
+        # TODO: Can we just pass this back to parse value?
+        if is_iterable(item_type):
+            return [parse_list_val(f, item_type, vi) for vi in v]
         if is_dataclass(item_type):
-            return [dict_to_cls(vi, item_type, strict) for vi in v]
-        if item_type.__bases__[0].__name__ == 'tuple':
-            return [dict_to_cls(vi, item_type, strict) for vi in v]
+            return [dict_to_cls(vi, item_type, strict) or item_type() for vi in v]
+        if is_named_tuple(item_type):
+            return [dict_to_cls(vi, item_type, strict) or item_type() for vi in v]
     except AttributeError as e:
         warn(f"Invalid type: {t}, {f}: {v}")
         raise e
@@ -129,7 +148,7 @@ def parse_named_tuple_val(f, t, v, strict=False):
     # run recursive dict_to_cls
     if strict and not isinstance(v, dict):
         raise TypeError('{} must be {}'.format(f, t))
-    return dict_to_cls(v, t, strict)
+    return dict_to_cls(v, t, strict) or t()
 
 
 def parse_dataclass_val(f, t, v, strict=False):
@@ -137,7 +156,18 @@ def parse_dataclass_val(f, t, v, strict=False):
     # run recursive dict_to_cls
     if strict and not isinstance(v, dict):
         raise TypeError('{} must be {}'.format(f, t))
-    return dict_to_cls(v, t, strict)
+    if not v:
+        # TODO: Check this has no unwanted side effects
+        try:
+            return t()
+        except TypeError as e:
+            if "missing" in str(e):
+                # We are missing required inputs to this class
+                return None
+            else:
+                raise e
+        return None
+    return dict_to_cls(v, t, strict) or t()
 
 
 def parse_enum_val(f, t, v, strict=False):
@@ -150,59 +180,6 @@ def parse_enum_val(f, t, v, strict=False):
         return next(e for e in t if e.value == v)
     except StopIteration:
         raise ValueError(f'{v} is not a member of enum {t}')
-
-
-def is_union(t) -> bool:
-    if get_origin:
-        if get_origin(t) == Union:
-            return True
-    else:
-        if t.__args__:
-            True
-    return False
-
-
-def is_iterable(t) -> bool:
-    if get_origin:
-        if get_origin(t) == list:
-            return True
-        if get_origin(t) == Sequence:
-            return True
-        if get_origin(t) == CSequence:
-            return True
-    # Py < 3.9
-    else:
-        if type(t) == type(List):
-            return True
-        if type(t) == type(Sequence):
-            return True
-        if type(t) == type(CSequence):
-            return True
-    return False
-
-
-def is_enum(t) -> bool:
-    if not inspect.isclass(t):
-        return False
-    if issubclass(t, Enum):
-        return True
-    return False
-
-
-def is_named_tuple(t) -> bool:
-    try:
-        # A hack to check if type is a named tuple
-        if t.__bases__ and t.__bases__[0].__name__ == 'tuple':
-            return True
-    except AttributeError:
-        pass
-    return False
-
-
-def is_base_cls(t) -> bool:
-    if t in [int, float, str, bool]:
-        return True
-    return False
 
 
 def get_parser(t) -> Callable[[str, type, Any, bool], object]:
@@ -226,6 +203,7 @@ def get_parser(t) -> Callable[[str, type, Any, bool], object]:
     TypeError
         Raised if the supplied type has not been implemented
     """
+
     if is_base_cls(t):
         return parse_base_val
     if is_iterable(t):
@@ -235,6 +213,8 @@ def get_parser(t) -> Callable[[str, type, Any, bool], object]:
             raise ValueError("Invalid Union Type: Can only parse Unions of base classes")
         return get_parser(t.__args__[0])
     if is_dataclass(t):
+        return parse_dataclass_val
+    if is_dictionary(t):
         return parse_dataclass_val
     if is_enum(t):
         return parse_enum_val
@@ -247,6 +227,8 @@ def get_parser(t) -> Callable[[str, type, Any, bool], object]:
 def dict_to_cls(data: dict, Cls, strict=False):
     """Parses a nested dictionary to a specific class using class attributes"""
     if not isinstance(data, dict):
+        if data is None:
+            return None
         raise Exception('Data is invalid {}'.format(type(data)))
 
     cls_fields = [f for (f, t) in Cls.__annotations__.items() if f in data]
@@ -263,6 +245,7 @@ def dict_to_cls(data: dict, Cls, strict=False):
     new_data = {}
     # f = field; t = type; v = value
     for (f, t, v) in zip(cls_fields, cls_field_types, data_values):
+        # TODO: If t is string then we need to import the type
         parser = get_parser(t)
         d = parser(f, t, v)
         new_data[f] = d
@@ -351,7 +334,7 @@ def unpack(obj):
     elif isinstance(obj, np.ndarray):
         return unpack(obj.tolist())
     elif issubclass(type(obj), enum.Enum):
-        return obj.name
+        return obj.value
     else:
         return obj
 

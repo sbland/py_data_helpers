@@ -1,8 +1,11 @@
-from dataclasses import is_dataclass
+from enum import Enum
+from copy import deepcopy
+from dataclasses import asdict, is_dataclass, replace
+from typing import List
 
 import numpy as np
 
-from data_helpers.comparisons import isNamedTuple
+from data_helpers.comparisons import BASE_TYPES, is_base_cls, isNamedTuple, is_enum, is_iterable
 
 
 def get_val_from_obj(obj, k):
@@ -65,4 +68,84 @@ def get_nested_val(data: dict, location_str: str):
             else:
                 out = [get_nested_val(o, '.'.join(loc_arr[i + 1])) for o in out]
             break
+    return out
+
+
+class ListMergeMethods(Enum):
+
+    REPLACE_ALL = "REPLACE_ALL"
+    ZIP = "ZIP"
+
+
+def merge_objects(a, b, list_method):
+    if a is None:
+        v = b
+    elif b is None:
+        v = a
+    elif type(a) in BASE_TYPES or is_enum(type(a)):
+        v = b
+    elif is_dataclass(a):
+        v = merge_dataclasses(a, b, list_method)
+    elif type(a) == type({}):
+        v = merge_dictionaries(a, b, list_method)
+    elif is_iterable(type(a)):
+        if len(a) == 0:
+            v = b
+        elif len(b) == 0:
+            v = a
+        else:
+            v = merge_iterable(a, b, method=list_method)
+    else:
+        print(type(a))
+        raise ValueError("Invalid type")
+    return v
+
+from itertools import zip_longest
+def merge_iterable(a, b, method="REPLACE_ALL"):
+    """Deep merge 2 iterables.
+
+    Methods
+    -------
+    ZIP
+    REPLACE
+    JOIN
+    REPLACE_ALL
+
+    """
+    if method == ListMergeMethods.ZIP:
+        if is_base_cls(type(a[0])): return b
+        return [merge_objects(v_a, v_b, method) for v_a, v_b in zip_longest(a, b)]
+    if method == "REPLACE":
+        raise NotImplementedError("REPLACE method not implemented")
+    if method == "JOIN":
+        raise NotImplementedError("JOIN method not implemented")
+    if method == ListMergeMethods.REPLACE_ALL:
+        return b
+    else:
+        raise ValueError("Invalid Merge Method")
+
+
+def merge_dataclasses(a, b, list_method=ListMergeMethods.REPLACE_ALL):
+    """Deep merge 2 dataclasses. B overrides a"""
+    assert is_dataclass(a) and is_dataclass(b)
+    out = replace(a)
+    for k in asdict(b).keys():
+        v_b = getattr(b, k)
+        v_a = getattr(a, k)
+        v = merge_objects(v_a, v_b, list_method)
+        setattr(out, k, v) if v is not None else 0
+
+    return out
+
+
+def merge_dictionaries(a, b, list_method=ListMergeMethods.REPLACE_ALL):
+    """Deep merge 2 dictionaries. B overrides a"""
+    assert type(a) == type({}) and type(b) == type({})
+    out = deepcopy(a)
+    for k in b.keys():
+        v_b = b.get(k)
+        v_a = a.get(k)
+        v = merge_objects(v_a, v_b, list_method)
+        out[k] = v if v is not None else 0
+
     return out

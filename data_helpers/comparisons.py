@@ -1,6 +1,93 @@
-import numpy as np
-from typing import NamedTuple
+try:
+    # From python 3.9+ typing is replaced with generics (PEP 585).
+    # Unfortunately this breaks a lot of this code so we attempt to bridge between the two.
+    # We try importing get_origin then use if available below
+    from typing import get_origin
+except:
+    pass
 
+from inspect import isclass
+from enum import Enum
+import numpy as np
+from collections.abc import Sequence as CSequence
+from typing import NamedTuple, List, Sequence, Union, Tuple
+
+BASE_TYPES = [float, int, str, bool]
+
+
+def is_union(t) -> bool:
+    if get_origin:
+        if get_origin(t) == Union:
+            return True
+    else:
+        if t.__args__:
+            True
+    return False
+
+
+def is_iterable(t) -> bool:
+    if t == type([]):
+        return True
+    if t == type((1,)):
+        return True
+    if get_origin:
+        if get_origin(t) == list:
+            return True
+        if get_origin(t) == tuple:
+            return True
+        if get_origin(t) == Sequence:
+            return True
+        if get_origin(t) == CSequence:
+            return True
+    # Py < 3.9 # or 3.8?
+    else:
+        # TODO: Check no false positives here
+        if type(t) == type(List):
+            return True
+        if type(t) == type(Sequence):
+            return True
+        if type(t) == type(Tuple):
+            return True
+        if type(t) == type(CSequence):
+            return True
+
+        if t == List:
+            return True
+        if t == Sequence:
+            return True
+        if t == Tuple:
+            return True
+        if t == CSequence:
+            return True
+
+    if t == np.ndarray:
+        return True
+    return False
+
+def is_enum(t) -> bool:
+    if isclass(t) and issubclass(t, Enum):
+        return True
+    return False
+
+
+def is_named_tuple(t) -> bool:
+    try:
+        # A hack to check if type is a named tuple
+        if t.__bases__ and t.__bases__[0].__name__ == 'tuple':
+            return True
+    except AttributeError:
+        pass
+    return False
+
+
+def is_base_cls(t) -> bool:
+    if t in [int, float, str, bool]:
+        return True
+    return False
+
+
+def is_dictionary(t) -> bool:
+    return t == type({"foo": "bar"})
 
 def isNamedTuple(t):
     '''helper function to check if t is a named tuple.
@@ -87,3 +174,4 @@ def assert_matched_tuples(tuple_a: NamedTuple, tuple_b: NamedTuple):
     passes = (len(mismatched_tuples) == 0)
     if not passes:
         raise AssertionError('Tuples do not match: ', mismatched_tuples)
+
