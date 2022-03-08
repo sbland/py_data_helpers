@@ -1,7 +1,10 @@
 """Various functions for generating classes from lower level data structures such as json."""
 from dataclasses import asdict, dataclass, field, make_dataclass
+import json
 from enum import Enum
 from typing import Callable, List, Tuple, Union
+from data_helpers.encoders import AdvancedJsonEncoder
+
 
 
 @dataclass
@@ -16,7 +19,10 @@ class FieldBase:
     unit: any = None
 
     def __asdict__(self):
-        return asdict(self)
+        out = asdict(self)
+        if out.get('default', None):
+            out['default'] = self.default()
+        return out
 
 
 @dataclass
@@ -29,6 +35,18 @@ class Group:
     default: Callable[[], any] = None
     desc: str = ''
 
+    def __asdict__(self):
+        out = asdict(self)
+        if out.get('default', None):
+            # TODO: May not be correct default here
+            out['default'] = self.default()
+        out['fields'] = [f.__asdict__() for f in self.fields]
+        out['type'] = 'group'
+        return out
+
+def group_to_json(group: Group, **kwargs) -> str:
+    return json.dumps(group, cls=AdvancedJsonEncoder , **kwargs)
+
 
 @dataclass
 class ListBase:
@@ -36,6 +54,15 @@ class ListBase:
     field: Union[FieldBase, Group]
     default: Callable[[], any] = None
     default_size: int = 0
+
+
+    def __asdict__(self):
+        out = asdict(self)
+        if out.get('default', None):
+            out['default'] = self.default()
+        # TODO: Should we store field type here?
+        out['type'] = "List"
+        return out
 
     def __post_init__(self):
         # TODO: Might need to patch dataclass attrs here
@@ -48,7 +75,6 @@ class ListBase:
 @dataclass
 class Field(FieldBase):
     dependencies: List[str] = field(default_factory=lambda: [])
-
 
 @dataclass
 class NumberField(FieldBase):
@@ -84,6 +110,13 @@ class Select(FieldBase):
 
     options: List[Tuple[str, str]] = field(default_factory=lambda: [])
     required_params: List[str] = field(default_factory=lambda: [])
+
+    def __asdict__(self):
+        out = asdict(self)
+        if out.get('default', None):
+            # TODO: May not be correct default here
+            out['default'] = self.default()
+        return out
 
 
 def generate_enum_from_select(f: Select):

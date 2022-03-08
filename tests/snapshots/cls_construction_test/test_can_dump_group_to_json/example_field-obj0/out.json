@@ -1,0 +1,11 @@
+{
+  "_parentcls": "<class 'data_helpers.cls_construction.Field'>",
+  "cls": "<class 'str'>",
+  "default": "default_name",
+  "dependencies": [],
+  "desc": "Name",
+  "label": "Name",
+  "required": true,
+  "unit": null,
+  "variable": "name"
+}

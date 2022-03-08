@@ -6,12 +6,14 @@ import pytest
 from enum import Enum
 from data_helpers.cls_construction import *
 
+
+example_field = Field('name', 'Name', str, 'Name', True, default=lambda: "default_name")
 InnerGroupStructure = Group(
     'inner_group',
     'Inner Group',
     True,
     fields=[
-        Field('name', 'Name', str, 'Name', True, default=lambda: ""),
+        example_field,
     ],
 )
 InnerGroup, subclasses = group_to_class(InnerGroupStructure, globals().get('__name__'))
@@ -317,8 +319,8 @@ class TestConfigGeneratorUi:
         config_ui = ConfigGeneratorUI(example_group)
         config_ui.generate_widgets()
         config_ui.field_inputs[3][1][0].value = 3
-        config_ui.field_inputs[6][1][0].value = 3
-        config_ui.field_inputs[7][1][0][1][0].value = 1
+        # config_ui.field_inputs[6][1][0].value = 3
+        # config_ui.field_inputs[7][1][0][1][0].value = 1
         data = config_ui.get_data_dict()
         print(data)
         assert data == {
@@ -347,3 +349,18 @@ class TestConfigGeneratorUi:
                 ]
             }
         }
+
+class TestGroupToJson:
+
+    @pytest.mark.parametrize(['name', 'obj'], [
+        ('example_field', example_field),
+        ('InnerGroupStructure', InnerGroupStructure),
+        ('example_group', example_group),
+    ])
+    def test_can_dump_group_to_json(self, snapshot, obj, name):
+        kwargs= dict(indent=2, sort_keys=True)
+        # name, obj = value
+        print(name)
+        out = json.dumps(obj, cls=AdvancedJsonEncoder , **kwargs)
+        snapshot.assert_match(out, "out.json")
+

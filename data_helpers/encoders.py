@@ -18,9 +18,11 @@ class AdvancedJsonEncoder(json.JSONEncoder):
     """ Special json encoder.
     """
 
-    def default(self, obj):
+    parse_functions = True
 
+    def default(self, obj):
         if getattr(obj, '__asdict__', None) and type(obj) != type:
+            # If we are parsing a type rather than an instance then we just get str(obj) instead
             return {**obj.__asdict__(), "_parentcls": type(obj)}
         elif isinstance(obj, list):
             return ','.join([str(i) for i in obj])
@@ -43,6 +45,11 @@ class AdvancedJsonEncoder(json.JSONEncoder):
             return obj.value
         elif type(obj) == type:
             return str(obj)
+        elif type(obj) == type(lambda: None):
+            # TODO: Implement this correctly
+            if self.parse_functions:
+                return "PLACEHOLDER_FUNC"
+            raise NotImplementedError(f"Cannot parse function: {obj}")
         return json.JSONEncoder.default(self, obj)
 
 
