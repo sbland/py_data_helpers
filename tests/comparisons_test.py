@@ -146,21 +146,13 @@ def test_is_iterable(value, result):
     assert is_iterable(value) == result
 
 
-@ pytest.mark.parametrize(['value', 'result'], [
-    (DemoEnum, True),
-    (type(1), False),
-    (type("a"), False),
-    ("a", False),
-])
-
-
 class TestIsEnum:
-    def test_is_enum(self):
-        class ExampleEnum(Enum):
-            FOO = "foo"
-        assert is_enum(ExampleEnum)
+    @pytest.mark.parametrize(['value', 'result'], [
+        (DemoEnum, True),
+        (type(1), False),
+        (type("a"), False),
+        ("a", False),
+    ])
+    def test_is_enum(self, value, result):
+        assert is_enum(value) == result
 
-    def test_is_enum_not(self):
-        class ExampleClass():
-            pass
-        assert not is_enum(ExampleClass)
