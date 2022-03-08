@@ -11,7 +11,7 @@ InnerGroupStructure = Group(
     'Inner Group',
     True,
     fields=[
-        Field('name', 'Name', str, 'Name', True, default=""),
+        Field('name', 'Name', str, 'Name', True, default=lambda: ""),
     ],
 )
 InnerGroup, subclasses = group_to_class(InnerGroupStructure, globals().get('__name__'))
@@ -21,20 +21,24 @@ example_fields = [
     Field('foo', 'Foo', str, 'Example field description a', True),
     Select(
         'sel', 'Sel', str, 'Example field', True,
-        default='A',
+        default=lambda: 'A',
         options=[
                Option('a', 'A', []),
                Option('b', 'B', [])
         ]
     ),
 
-    NumberField('bar', 'Bar', int, 'Example number field', True, 9, min=3, max=33, step=3),
-    ListField(Field('foos', 'Foos', int, 'Example list', default=[])),
+    NumberField('bar', 'Bar', int, 'Example number field',
+                True, default=lambda: 9, min=3, max=33, step=3),
+    ListField(Field('foos', 'Foos', int, 'Example list', default=lambda: [])),
     Group('main', 'Main', True, [
         Field('inner', 'Inner', str),
     ]),
     Group('other', 'Other', True, [
         Field('inner_b', 'InnerB', str),
+    ]),
+    Group('outer', 'Outer', True, [
+        InnerGroupStructure
     ]),
     ListGroup(Group('list_group', 'List Group Example', True, [
         Field('inner_l', 'Inner List Field', str),
@@ -92,6 +96,7 @@ class GeneratedType:
 
 
 def check_class_match(cls_a, cls_b, verbose=False) -> bool:
+    """Test that the resulting class matches a dataclass type."""
     try:
         match_attrs = ['__class__', '__dataclass_params__', '__delattr__', '__dir__', '__format__', '__ge__', '__getattribute__', '__gt__', '__hash__',
                        '__le__', '__lt__', '__module__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__setattr__', '__sizeof__', '__str__', '__weakref__']
@@ -142,6 +147,12 @@ def check_class_match(cls_a, cls_b, verbose=False) -> bool:
     return True
 
 
+class TestConstructionClasses:
+
+    def test_can_access_field_base_from_list_field(self):
+        pass
+
+
 class TestConstructDataclassFromDict:
 
     def test_should_be_able_to_construct_cls_from_fields(self):
@@ -168,6 +179,10 @@ class TestConstructDataclassFromDict:
         mainGroup = MainGroupGenerated("hello")
         OtherGroupGenerated = subclasses["Other"]
         otherGroup = OtherGroupGenerated("World")
+        OuterGroup = subclasses['Outer']
+        InnerGroup = subclasses['InnerGroup']
+        innerGroup = InnerGroup()
+        outerGroup = OuterGroup(innerGroup)
         SelEnumGenerated = subclasses["Sel"]
         ListGroupExampleGenerated = subclasses["ListGroupExample"]
 
@@ -175,8 +190,9 @@ class TestConstructDataclassFromDict:
         assert otherGroup.inner_b == "World"
         foo = "foo"
         sel = SelEnumGenerated.A
+
         out = OutCls(foo=foo, main=mainGroup, other=otherGroup, sel=sel,
-                     list_group=ListGroupExampleGenerated('inner'), a=None)
+                     outer=outerGroup, list_group=ListGroupExampleGenerated('inner'), a=None)
         assert out.main.inner == "hello"
         assert out.other.inner_b == "World"
         assert out.sel.value == SelEnum.A.value
@@ -186,8 +202,92 @@ class TestConstructDataclassFromDict:
 
         with pytest.raises(TypeError) as e:
             out = OutCls()
-        assert "TypeError(\"__init__() missing 5 required positional arguments: 'foo', 'main', 'other', 'list_group', and 'a'\")" in str(
+        assert "TypeError(\"__init__() missing 6 required positional arguments: 'foo', 'main', 'other', 'outer', 'list_group', and 'a'\")" in str(
             e)
+
+    def test_can_create_with_defaults(self):
+        OutCls, subclasses = group_to_class(example_group, globals().get('__name__'))
+
+        out = OutCls._default()
+
+    def test_can_create_default_nested_objects(self):
+        _example_fields = [
+            Group('outer', 'Outer', True, [
+                Group(
+                    'inner_group',
+                    'Inner Group',
+                    True,
+                    fields=[
+                        Field('name', 'Name', str, 'Name', True, default=lambda: ""),
+                    ],
+                )
+            ]),
+        ]
+
+        _example_group = Group('GeneratedType', 'Generated Type', True, _example_fields)
+
+        OutCls, subclasses = group_to_class(_example_group, globals().get('__name__'))
+        out = OutCls._default()
+
+        assert out.outer is not None
+        assert out.outer.inner_group is not None
+        assert out.outer.inner_group.name is not None
+
+    def test_can_create_default_nested_objects_with_dict(self):
+        _example_fields = [
+            Group('outer', 'Outer', True, [
+                Group(
+                    'inner_group',
+                    'Inner Group',
+                    True,
+                    fields=[
+                        Field('name', 'Name', str, True, default=lambda: ""),
+                        Field('other', 'Other', str, True, default=lambda: "other_default"),
+                    ],
+                )
+            ]),
+        ]
+
+        _example_group = Group('GeneratedType', 'Generated Type', True, _example_fields)
+
+        OutCls, subclasses = group_to_class(_example_group, globals().get('__name__'))
+        out = OutCls._default({"outer": {"inner_group": {"name": "altname"}}})
+
+        assert out.outer is not None
+        assert out.outer.inner_group is not None
+        assert out.outer.inner_group.name == "altname"
+        assert out.outer.inner_group.other == "other_default"
+
+    def test_can_create_default_nested_list_objects(self):
+        default_size = 2
+        _example_fields = [
+            Group(
+                'a',
+                'A',
+                True,
+                fields=[
+                    ListGroup(Group(
+                        'b',
+                        'b',
+                        True,
+                        fields=[Field('foo', 'Foo', str, default=lambda: "foov")],
+                    ),
+                        default_size=default_size),
+                ],
+            ),
+        ]
+
+        _example_group = Group('GeneratedType', 'Generated Type', True, _example_fields)
+
+        OutCls, subclasses = group_to_class(_example_group, globals().get('__name__'))
+        out = OutCls._default()
+
+        assert out.a is not None
+        assert out.a.b is not None
+        assert len(out.a.b) == default_size
+        assert out.a.b[0] is not None
+        assert out.a.b[0].foo is not None
+        assert out.a.b[0].foo == 'foov'
 
     def test_should_parse_json_to_class_using_field_data(self):
         pass

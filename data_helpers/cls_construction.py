@@ -12,7 +12,7 @@ class FieldBase:
     cls: type
     desc: str = ''
     required: bool = False
-    default: any = None
+    default: Callable[[], any] = None
     unit: any = None
 
     def __asdict__(self):
@@ -26,6 +26,7 @@ class Group:
     label: str
     required: bool
     fields: List[FieldBase]
+    default: Callable[[], any] = None
     desc: str = ''
 
 
@@ -33,6 +34,15 @@ class Group:
 class ListBase:
 
     field: Union[FieldBase, Group]
+    default: Callable[[], any] = None
+    default_size: int = 0
+
+    def __post_init__(self):
+        # TODO: Might need to patch dataclass attrs here
+
+        # Name the list variable to match the sub object variable.
+        setattr(self, 'variable', self.field.variable)
+        self.variable = self.field.variable
 
 
 @dataclass
@@ -85,6 +95,7 @@ def label_to_cls_name(label):
 
 
 def get_field_cls(f: FieldBase, module):
+    subclasses = {}
     if isinstance(f, Group):
         # TODO: Return subclasses
         Cls, subclasses = group_to_class(f, module)
@@ -96,7 +107,7 @@ def get_field_cls(f: FieldBase, module):
         Cls = generate_enum_from_select(f)
     else:
         raise ValueError(f"Invalid fieldtype: {type(f)}")
-    return Cls
+    return Cls, subclasses
 
 
 def get_field_default(f: FieldBase, Cls):
@@ -112,7 +123,7 @@ def get_field_default(f: FieldBase, Cls):
     elif isinstance(f, Field):
         if f.default is not None:
             if type(f.cls) in [dict, list]:
-                def_value = field(default_factory=lambda: f.default)
+                def_value = field(default_factory=f.default)
             else:
                 def_value = field(default=f.default)
     elif isinstance(f, NumberField):
@@ -124,26 +135,42 @@ def get_field_default(f: FieldBase, Cls):
     elif isinstance(f, Select):
         # TODO: Set default
         if f.default is not None:
-            def_value = field(default=Cls[f.default])
+            def_value = field(default=Cls[f.default()])
     else:
         raise ValueError(f"Invalid fieldtype: {type(f)}")
     return use_def, def_value
 
 
 def field_to_dataclass_field(f: Union[FieldBase, ListBase], module):
+    """Get Class and Subclasses from field schema.
+
+    Parameters
+    ----------
+    f : Union[FieldBase, ListBase]
+        The field schema
+    module : _type_
+        Module to link to
+
+    Returns
+    -------
+    Tuple[str, SubClasses]
+        Name and generated classes
+    """
     if isinstance(f, ListBase):
-        Cls = get_field_cls(f.field, module)
+        Cls, subclasses = get_field_cls(f.field, module)
         use_def = not getattr(f.field, 'required', False)
         def_value = True, field(default_factory=lambda: []) if use_def else None
         field_name = f.field.variable
         field_out = (field_name, Cls) if not use_def else (field_name, Cls, def_value)
-        return field_out, (label_to_cls_name(f.field.label), Cls)
+        classes = [*subclasses.items(), (label_to_cls_name(f.field.label), Cls)]
+        return field_out, classes
     else:
-        Cls = get_field_cls(f, module)
+        Cls, subclasses = get_field_cls(f, module)
         use_def, def_value = get_field_default(f, Cls)
         field_name = f.variable
         field_out = (field_name, Cls) if not use_def else (field_name, Cls, def_value)
-        return field_out, (label_to_cls_name(f.label), Cls)
+        classes = [*subclasses.items(), (label_to_cls_name(f.label), Cls)]
+        return field_out, classes
 
 
 def sort_fields(f: Field) -> bool:
@@ -160,15 +187,75 @@ def sort_fields(f: Field) -> bool:
     return 1 if use_def else 0
 
 
+def get_val_default(k: FieldBase) -> any:
+    try:
+        return k.default() if k.default is not None else None
+    except TypeError as e:
+        if "object is not callable" in str(e):
+            raise TypeError(f"Default value for {k.label or k.variable} must be a function")
+        else:
+            raise e
+
+
+def create_with_default(group: Group, Cls, subclasses):
+    def inner(input_data: dict = None):
+        _input_data = input_data or {}
+        args = {}
+        for k in group.fields:
+            input_val = _input_data.get(k.variable, None)
+            if isinstance(k, Group):
+                key = label_to_cls_name(k.label)
+                args[k.variable] = subclasses[key]._default(input_val)
+            elif isinstance(k, ListGroup):
+                if input_val is not None:
+                    raise NotImplementedError("Input Lists not implemented")
+                if k.default_size:
+                    key = label_to_cls_name(k.field.label)
+                    args[k.variable] = [subclasses[key]._default() for _ in range(k.default_size)]
+                else:
+                    args[k.variable] = k.default() if k.default is not None else []
+            elif isinstance(k, ListField):
+                if input_val is not None:
+                    assert type(input_val) == type([]), f"Must provide list for {k.variable}"
+                    args[k.variable] = input_val
+                else:
+                    if k.default_size:
+                        field_default = k.field.default() if k.field.default is not None else None
+                        args[k.variable] = [field_default for _ in range(k.default_size)]
+                    else:
+                        args[k.variable] = k.default() if k.default is not None else []
+
+            elif isinstance(k, Select):
+                key = label_to_cls_name(k.label)
+                if k.default is not None:
+                    default_val = get_val_default(k)
+                    args[k.variable] = subclasses[key][default_val]
+                else:
+                    args[k.variable] = None
+            elif isinstance(k, (Field, NumberField)):
+                if input_val:
+                    args[k.variable] = input_val
+                else:
+                    args[k.variable] = get_val_default(k)
+
+            else:
+                raise TypeError(f"Default setup not implemented for {type(k)}")
+
+        return Cls(**args)
+    return inner
+
+
 def group_to_class(group: Group, module) -> object:
     sorted_fields = sorted(group.fields, key=sort_fields)
-    fields_parsed, classes = zip(*[field_to_dataclass_field(f, module)
+    fields_parsed, subclasses = zip(*[field_to_dataclass_field(f, module)
                                    for f in sorted_fields])
-    subclasses = dict(classes)
+    #    classes is a List[List[Tuple[str, Cls]]]
+    subclasses_dict = dict([b for a in subclasses for b in a])
     obj = make_dataclass(label_to_cls_name(group.label), fields_parsed)
     obj.__doc__ = f"{group.label} Generated Dataclass"
     obj.__module__ = module
-    return obj, subclasses
+    obj._default = create_with_default(group, obj, subclasses_dict)
+    return obj, subclasses_dict
 
 
 class Struct(object):
