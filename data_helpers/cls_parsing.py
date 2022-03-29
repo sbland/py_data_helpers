@@ -247,7 +247,7 @@ def dict_to_cls(data: dict, Cls, strict=False):
     for (f, t, v) in zip(cls_fields, cls_field_types, data_values):
         # TODO: If t is string then we need to import the type
         parser = get_parser(t)
-        d = parser(f, t, v)
+        d = parser(f, t, v, strict)
         new_data[f] = d
 
     cls_out = Cls(**new_data)
