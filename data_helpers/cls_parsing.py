@@ -1,7 +1,7 @@
 import enum
 from warnings import warn
 from dataclasses import asdict, is_dataclass, replace
-from typing import Any, Callable, NamedTuple, List, Union
+from typing import Any, Callable, NamedTuple, List, Union, TypeVar
 from copy import deepcopy
 from functools import reduce
 import numpy as np
@@ -121,13 +121,15 @@ def parse_base_val(f, t, v, strict=False):
 def parse_list_val(f, t, v, strict=False):
     try:
         item_type = t.__args__[0]
+
     except AttributeError as e:
         raise TypeError(f"field {f} has list type without meta data for element types")
     try:
-
         if strict and not isinstance(v, list):
             raise TypeError('{} must be {}'.format(f, t))
-
+        if(type(item_type) == TypeVar):
+            # Type is a custom type so we should just return the value
+            return v
         if is_base_cls(item_type):
             return v
         # TODO: Can we just pass this back to parse value?

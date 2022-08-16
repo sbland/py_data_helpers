@@ -1,9 +1,8 @@
 import typing
 import sys
-from typing import Union
 from enum import Enum
 from dataclasses import dataclass
-from typing import NamedTuple, List, Sequence, Tuple
+from typing import NamedTuple, List, Sequence, Tuple, Union, TypeVar
 import pytest
 
 from data_helpers.cls_parsing import (
@@ -23,13 +22,16 @@ if sys.version_info <= (3, 9):
     tuple = Tuple
     sequence = Sequence
 
+
 class DemoEnum(Enum):
-    DEFAULT="default"
+    DEFAULT = "default"
+
 
 @dataclass
 class DemoDataclass:
     foo: int
     bar: str = "hello"
+
 
 @dataclass
 class DemoDataclassSimple:
@@ -46,8 +48,8 @@ def test_parse_base_val(f, t, v, result):
 
 
 @pytest.mark.parametrize(['f', 't', 'v', 'result', 'error'], [
-    ('field', type([]), [1,2,3], None, TypeError),
-    ('field', List[int], [1,2,3], [1,2,3], None),
+    ('field', type([]), [1, 2, 3], None, TypeError),
+    ('field', List[int], [1, 2, 3], [1, 2, 3], None),
     # ('field', List[int], ['1','2','3'], [1,2,3], None), # TODO: fix this test
 ])
 def test_parse_list_val(f, t, v, result, error):
@@ -56,8 +58,6 @@ def test_parse_list_val(f, t, v, result, error):
             parse_list_val(f, t, v) == result
     else:
         assert parse_list_val(f, t, v) == result
-
-
 
 
 @pytest.mark.parametrize(['f', 't', 'v', 'result', 'error'], [
@@ -71,8 +71,6 @@ def test_parse_dataclass_val(f, t, v, result, error):
             parse_dataclass_val(f, t, v) == result
     else:
         assert parse_dataclass_val(f, t, v) == result
-
-
 
 
 def test_dict_to_cls():
@@ -93,7 +91,6 @@ def test_dict_to_cls():
 
     new_object = dict_to_cls(d, A)
     assert new_object == A(B('bar'), 1)
-
 
 
 def test_dict_to_dataclass():
@@ -163,6 +160,7 @@ def test_dict_to_cls_nested_named_tuple():
     new_object = dict_to_cls(d, Wrap)
     assert new_object == Wrap(a=A(lat=52.2, lon=-1.12))
 
+
 def test_dict_to_cls_empty():
     class B(NamedTuple):
         parameters: List[str] = []
@@ -182,7 +180,6 @@ def test_dict_to_cls_empty():
 
     new_object = dict_to_cls(d, Wrap)
     assert new_object == Wrap(a=A(lat=None, lon=None))
-
 
 
 def test_dict_to_cls_nested_list_of_lists():
@@ -277,6 +274,72 @@ def test_dict_to_cls_nested_list():
     assert new_object == Wrap(b=B(parameters=["a", "b"]))
 
 
+def test_dict_to_cls_nested_list_of_lists():
+
+    class Foo(NamedTuple):
+        bar: List[List[float]] = []
+
+    class Parameters(NamedTuple):
+        foo: Foo = Foo()
+
+    class B(NamedTuple):
+        parameters: List[Parameters] = []
+
+    class Wrap(NamedTuple):
+        b: B = B()
+
+    d = {
+        "b": {
+            "parameters": [
+                {
+                    "foo": {
+                        "bar": [[1, 2], [3, 4]]
+                    }
+                }
+            ]
+        }
+    }
+
+    new_object = dict_to_cls(d, Wrap)
+    assert new_object == Wrap(b=B(parameters=[Parameters(foo=Foo(bar=[[1, 2], [3, 4]]))]))
+
+
+def test_dict_to_cls_typevar_class():
+    UX = TypeVar('UX')
+    UY = TypeVar('UY')
+    PiecewiseFunction = Tuple[List[UX], List[UY]]
+
+    class Car(NamedTuple):
+        rar: PiecewiseFunction = None
+
+    class Bar(NamedTuple):
+        car: Car = Car()
+
+    class Foo(NamedTuple):
+        bar: List[Bar] = []
+
+    class Wrap(NamedTuple):
+        foo: Foo = Foo()
+        see: PiecewiseFunction = None
+
+    data = {
+        "see": [[0, -1.0], [73.55, 0.0], [632.53, 1.0], [1471.0, 2.0]],
+        "foo": {
+            "bar": [
+                {
+                    "car": {
+                        "rar": [[0, -1.0], [73.55, 0.0], [632.53, 1.0], [1471.0, 2.0]]
+                    }
+                }
+            ]
+        }
+    }
+
+    new_object: Wrap = dict_to_cls(data, Wrap)
+    assert new_object.see[0] == [0, -1.0]
+    assert new_object.foo.bar[0].car.rar[0] == [0, -1.0]
+
+
 def test_dict_to_cls_nested_list_of_tuple():
     class B(NamedTuple):
         parameters: List[str] = []
@@ -354,7 +417,7 @@ class TestGetParser():
 
     def test_get_parser_Union_enum(self):
 
-        t = Union[DemoEnum,DemoEnum]
+        t = Union[DemoEnum, DemoEnum]
         parser = get_parser(t)
         assert parser == parse_enum_val
 
@@ -436,6 +499,7 @@ def test_get_nested_args_from_tuple():
     result = get_val_from_tuple(tup, 'a.val')
     assert result == 1
 
+
 class TestRsetattr:
 
     def test_can_set_base_attribute(self):
@@ -444,30 +508,28 @@ class TestRsetattr:
         assert out['foo'] == 'bar'
 
     def test_can_set_nested_attribute(self):
-        base = { "foo": { }}
+        base = {"foo": {}}
         out = rsetattr(base, 'foo.bar', 'bar')
         assert out['foo']['bar'] == 'bar'
-        base = { "foo": { "bar": {} }}
+        base = {"foo": {"bar": {}}}
         out = rsetattr(base, 'foo.bar.zoo', 'bar')
         assert out['foo']['bar']['zoo'] == 'bar'
 
     def test_can_create_missing_dicts(self):
-        base = { }
+        base = {}
         out = rsetattr(base, 'foo.bar', 'bar', create_missing_dicts=True)
         assert out['foo']['bar'] == 'bar'
 
     def test_can_create_missing_lists(self):
-        base = { }
+        base = {}
         out = rsetattr(base, 'foo.0', 'bar', create_missing_dicts=True)
         print(out)
         assert out['foo'][0] == 'bar'
 
     def test_can_create_missing_lists_padded(self):
-        base = { }
+        base = {}
         out = rsetattr(base, 'foo.3', 'bar', create_missing_dicts=True)
         print(out)
         assert out['foo'][3] == 'bar'
         assert out['foo'][0] == None
         assert len(out['foo']) == 4
-
-
