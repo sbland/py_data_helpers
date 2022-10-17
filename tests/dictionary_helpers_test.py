@@ -350,6 +350,38 @@ class TestMergeDictionaries:
         assert c["top"]["parameters"][0]["info"]["nested"]["a"] == 2
         assert c["top"]["parameters"][0]["info"]["nested"]["b"] == 2
 
+    def test_can_merge_nested_list_merge_individual_null_combined(self):
+        a = {
+            "top": {
+                "parameters": [
+                    {
+                        "info": {
+                            "nested": {
+                                "a": None,
+                                "b": 2
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+        b = {
+            "top": {
+                "parameters": [
+                    {
+                        "info": {
+                            "nested": {
+                                "a": None
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+
+        c = merge_dictionaries(a, b, ListMergeMethods.ZIP)
+        assert c["top"]["parameters"][0]["info"]["nested"]["a"] == None
+
 
     def test_can_merge_nested_list_merge_individual_d(self):
         a = {

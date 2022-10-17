@@ -133,7 +133,7 @@ def merge_dataclasses(a, b, list_method=ListMergeMethods.REPLACE_ALL):
         v_b = getattr(b, k)
         v_a = getattr(a, k)
         v = merge_objects(v_a, v_b, list_method)
-        setattr(out, k, v) if v is not None else 0
+        setattr(out, k, v) if v is not None else None
 
     return out
 
@@ -146,6 +146,6 @@ def merge_dictionaries(a, b, list_method=ListMergeMethods.REPLACE_ALL):
         v_b = b.get(k)
         v_a = a.get(k)
         v = merge_objects(v_a, v_b, list_method)
-        out[k] = v if v is not None else 0
+        out[k] = v if v is not None else None
 
     return out
