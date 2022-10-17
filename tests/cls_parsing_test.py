@@ -47,9 +47,15 @@ def test_parse_base_val(f, t, v, result):
     assert parse_base_val(f, t, v) == result
 
 
+UX = TypeVar('UX')
+UY = TypeVar('UY')
+PiecewiseFunction = Tuple[List[UX], List[UY]]
+
+
 @pytest.mark.parametrize(['f', 't', 'v', 'result', 'error'], [
     ('field', type([]), [1, 2, 3], None, TypeError),
     ('field', List[int], [1, 2, 3], [1, 2, 3], None),
+    ('field', PiecewiseFunction, None, [], None),
     # ('field', List[int], ['1','2','3'], [1,2,3], None), # TODO: fix this test
 ])
 def test_parse_list_val(f, t, v, result, error):

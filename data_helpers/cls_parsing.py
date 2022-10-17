@@ -134,6 +134,8 @@ def parse_list_val(f, t, v, strict=False):
             return v
         # TODO: Can we just pass this back to parse value?
         if is_iterable(item_type):
+            if v is None:
+                return []
             return [parse_list_val(f, item_type, vi) for vi in v]
         if is_dataclass(item_type):
             return [dict_to_cls(vi, item_type, strict) or item_type() for vi in v]

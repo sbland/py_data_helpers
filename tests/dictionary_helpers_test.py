@@ -382,6 +382,21 @@ class TestMergeDictionaries:
         c = merge_dictionaries(a, b, ListMergeMethods.ZIP)
         assert c["top"]["parameters"][0]["info"]["nested"]["a"] == None
 
+    def test_can_merge_nested_list_merge_individual_null_list(self):
+        a = {
+            "top": {
+                "parameters": None
+            }
+        }
+        b = {
+            "top": {
+                "parameters": None
+            }
+        }
+
+        c = merge_dictionaries(a, b, ListMergeMethods.ZIP)
+        assert c["top"]["parameters"] == None
+
 
     def test_can_merge_nested_list_merge_individual_d(self):
         a = {
