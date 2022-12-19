@@ -183,7 +183,7 @@ def parse_enum_val(f, t, v, strict=False):
     try:
         return next(e for e in t if e.value == v)
     except StopIteration:
-        raise ValueError(f'{v} is not a member of enum {t}')
+        raise ValueError(f'{v} is not a member of enum {t}. Valid values are {[e.value for e in t]}')
 
 
 def get_parser(t) -> Callable[[str, type, Any, bool], object]:
