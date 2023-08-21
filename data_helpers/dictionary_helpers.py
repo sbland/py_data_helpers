@@ -179,11 +179,15 @@ def find_key(obj: object, k: str, prefix: str = "") -> str:
                 return prefix + kk
             else:
                 if isinstance(obj[kk], dict):
-                    return find_key(obj[kk], k, prefix + kk + ".")
-                else:
-                    return find_key(obj[kk], k, prefix + kk + ".")
-    else:
-        return prefix + k
+                    sub_k = find_key(obj[kk], k, prefix + kk + ".")
+                    if sub_k is not None:
+                        return sub_k
+                if isinstance(obj[kk], list):
+                    for i, v in enumerate(obj[kk]):
+                        sub_k = find_key(v, k, prefix + kk + "." + str(i) + ".")
+                        if sub_k is not None:
+                            return sub_k
+    return None
 
 
 def find_all_keys(obj: object, k: str, prefix: str = '') -> List[str]:
@@ -207,7 +211,6 @@ def find_all_keys(obj: object, k: str, prefix: str = '') -> List[str]:
 
     """
     keys = []
-    print(k, obj)
     if type(obj) == type({}):
         for kk in obj.keys():
             if kk == k:
@@ -215,6 +218,18 @@ def find_all_keys(obj: object, k: str, prefix: str = '') -> List[str]:
             else:
                 if isinstance(obj[kk], dict):
                     keys.extend(find_all_keys(obj[kk], k, prefix + kk + "."))
-                else:
-                    keys.extend(find_all_keys(obj[kk], k, prefix + kk + "."))
+                if isinstance(obj[kk], list):
+                    for i, v in enumerate(obj[kk]):
+                        keys.extend(find_all_keys(v, k, prefix + kk + "." + str(i) + "."))
     return keys
+    # keys = []
+    # if type(obj) == type({}):
+    #     for kk in obj.keys():
+    #         if kk == k:
+    #             keys.append(prefix + kk)
+    #         else:
+    #             if isinstance(obj[kk], dict):
+    #                 keys.extend(find_all_keys(obj[kk], k, prefix + kk + "."))
+    #             else:
+    #                 keys.extend(find_all_keys(obj[kk], k, prefix + kk + "."))
+    # return keys
