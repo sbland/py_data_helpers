@@ -3,7 +3,14 @@ from dataclasses import dataclass
 from typing import Any, NamedTuple
 
 from data_helpers.fill_np_array import fill_np_array_with_cls
-from data_helpers.dictionary_helpers import ListMergeMethods, get_nested_val, merge_dataclasses, merge_dictionaries
+from data_helpers.dictionary_helpers import (
+    ListMergeMethods,
+    get_nested_val,
+    merge_dataclasses,
+    merge_dictionaries,
+    find_key,
+    find_all_keys,
+)
 
 
 def test_get_nested_args_from_dict():
@@ -316,7 +323,6 @@ class TestMergeDictionaries:
         assert c["top"]["parameters"][0]["name"] == "world"
         assert c["top"]["parameters"][0]["other"] == "this"
 
-
     def test_can_merge_nested_list_merge_individual_e(self):
         a = {
             "top": {
@@ -397,7 +403,6 @@ class TestMergeDictionaries:
         c = merge_dictionaries(a, b, ListMergeMethods.ZIP)
         assert c["top"]["parameters"] == None
 
-
     def test_can_merge_nested_list_merge_individual_d(self):
         a = {
             "top": {
@@ -428,4 +433,38 @@ class TestMergeDictionaries:
     #     assert c["Land_Cover"]["fLAI"] == [0.25,0.25,0.25,0.25]
 
 
+class TestFindKey:
 
+    def test_find_nested_key(self):
+        k = "foo"
+        d = {
+            "bar": {
+                "foo": 2,
+                "roo": 3,
+                "ree": {
+                    "foo": 4,
+                    "sow": 5,
+                }
+            }
+        }
+        k_out = find_key(d, k)
+        assert k_out == "bar.foo"
+
+class TestFindAllKeys:
+
+    def test_find_all_keys(self):
+        k = "foo"
+        d = {
+            "bar": {
+                "foo": 2,
+                "roo": 3,
+                "ree": {
+                    "foo": 4,
+                    "sow": 5,
+                }
+            }
+        }
+        k_out = find_all_keys(d, k)
+        assert len(k_out) == 2
+        assert k_out[0] == "bar.foo"
+        assert k_out[1] == "bar.ree.foo"

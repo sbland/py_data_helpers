@@ -1,3 +1,4 @@
+from itertools import zip_longest
 from enum import Enum
 from copy import deepcopy
 from dataclasses import asdict, is_dataclass, replace
@@ -100,7 +101,7 @@ def merge_objects(a, b, list_method):
         raise ValueError("Invalid type")
     return v
 
-from itertools import zip_longest
+
 def merge_iterable(a, b, method="REPLACE_ALL"):
     """Deep merge 2 iterables.
 
@@ -113,7 +114,8 @@ def merge_iterable(a, b, method="REPLACE_ALL"):
 
     """
     if method == ListMergeMethods.ZIP:
-        if is_base_cls(type(a[0])): return b
+        if is_base_cls(type(a[0])):
+            return b
         return [merge_objects(v_a, v_b, method) for v_a, v_b in zip_longest(a, b)]
     if method == "REPLACE":
         raise NotImplementedError("REPLACE method not implemented")
@@ -149,3 +151,70 @@ def merge_dictionaries(a, b, list_method=ListMergeMethods.REPLACE_ALL):
         out[k] = v if v is not None else None
 
     return out
+
+
+def find_key(obj: object, k: str, prefix: str = "") -> str:
+    """Find a key in a dictionary and return the full key path
+
+    e.g.
+    k="foo"
+    obj = {
+        "bar": {
+            "foo": 2,
+            "roo": 3,
+            "ree": {
+                "foo": 4,
+                "sow": 5,
+            }
+        }
+    }
+
+
+    Will return "bar.foo"
+
+    """
+    if type(obj) == type({}):
+        for kk in obj.keys():
+            if kk == k:
+                return prefix + kk
+            else:
+                if isinstance(obj[kk], dict):
+                    return find_key(obj[kk], k, prefix + kk + ".")
+                else:
+                    return find_key(obj[kk], k, prefix + kk + ".")
+    else:
+        return prefix + k
+
+
+def find_all_keys(obj: object, k: str, prefix: str = '') -> List[str]:
+    """Find all keys in a dictionary and return the full key paths
+
+    e.g.
+    k="foo"
+    obj = {
+        "bar": {
+            "foo": 2,
+            "roo": 3,
+            "ree": {
+                "foo": 4,
+                "sow": 5,
+
+            }
+        }
+    }
+
+    Will return ["bar.foo", "bar.ree.foo"]
+
+    """
+    keys = []
+    print(k, obj)
+    if type(obj) == type({}):
+        for kk in obj.keys():
+            if kk == k:
+                keys.append(prefix + kk)
+            else:
+                if isinstance(obj[kk], dict):
+                    keys.extend(find_all_keys(obj[kk], k, prefix + kk + "."))
+                else:
+                    keys.extend(find_all_keys(obj[kk], k, prefix + kk + "."))
+    return keys
