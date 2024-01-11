@@ -11,14 +11,19 @@ class SciField:
     type: type
 
 
+@dataclass
+class NestedField:
+    label: SciField("Label", "Nested", str)
+
 
 @dataclass
 class Point:
     x: SciField("X field", 0, int)
-    y: SciField("Y field", 0, int)
-    label: SciField("Label", "Point", str)
-    number: int
-    data: dict
+    y: SciField("Y field", 0, int) = 0
+    label: SciField("Label", "Point", str) = "MISSING_LABEL"
+    number: int = 1  # TODO: Get default from  = 1
+    data: dict = None
+    nested: NestedField = None
 
 
 examples = [
@@ -30,8 +35,17 @@ examples = [
             label=dict(label="Label", default="Point", type="str"),
             number=dict(label="Integer", default=0, type="int"),
             data=dict(label="Dictionary", default={}, type="dict"),
-        )
-    ), indent=4, sort_keys=True)),
+            nested=dict(
+                name="NestedField",
+                fields=dict(
+                    label=dict(label="Label", default="Nested", type="str"),
+                ),
+            )
+        ),
+    ),
+        indent=4,
+        sort_keys=True,
+    )),
 ]
 
 

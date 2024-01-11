@@ -45,7 +45,31 @@ default_class_meta = {
     },
 }
 
+def parse_dataclass(obj: type):
+    """Parse a dataclass into a dictionary of meta data."""
+    assert type(obj) == type
+    if is_dataclass(obj):
+        #  This is an adaption of the dataclasses.asdict function
+        result = {
+            "name": obj.__name__,
+            "fields": {
 
+            }
+        }
+        for f in fields(obj):
+            if is_dataclass(f.type) and type(f.type) != type:
+                result['fields'][f.name] = asdict(f.type)
+            elif f.type in default_class_meta:
+                result['fields'][f.name] = default_class_meta[f.type]
+            elif is_dataclass(f.type) and type(f.type) == type:
+                # pass
+                result['fields'][f.name] = parse_dataclass(f.type)
+            else:
+                raise NotImplementedError(f"Cannot parse type: {f.type}")
+
+        return result
+    else:
+        return str(obj.__name__)
 
 class MetaClassJsonEncoder(json.JSONEncoder):
     """ Special json encoder that outputs class meta data.
@@ -61,20 +85,4 @@ class MetaClassJsonEncoder(json.JSONEncoder):
     """
 
     def default(self, obj):
-        assert type(obj) == type
-        if is_dataclass(obj):
-            #  This is an adaption of the dataclasses.asdict function
-            result = {
-                "name": obj.__name__,
-                "fields": {
-
-                }
-            }
-            for f in fields(obj):
-                if is_dataclass(f.type):
-                    result['fields'][f.name] = asdict(f.type)
-                else:
-                    result['fields'][f.name] = default_class_meta[f.type]
-            return result
-        else:
-            return str(obj.__name__)
+        return parse_dataclass(obj)
