@@ -15,6 +15,7 @@ from data_helpers.cls_parsing import (
     parse_enum_val,
     parse_list_val,
     rsetattr,
+    rgetattr,
 )
 
 if sys.version_info <= (3, 9):
@@ -505,6 +506,18 @@ def test_get_nested_args_from_tuple():
     result = get_val_from_tuple(tup, 'a.val')
     assert result == 1
 
+
+class TestRGetAttr:
+    def test_can_get_nested_value(self):
+        obj = {
+            "foo": {
+                "bar": {
+                    "zoo": "hello"
+                }
+            }
+        }
+        result = rgetattr(obj, 'foo.bar.zoo')
+        assert result == 'hello'
 
 class TestRsetattr:
 
