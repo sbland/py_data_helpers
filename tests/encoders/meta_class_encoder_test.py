@@ -2,6 +2,7 @@ import json
 import pytest
 from dataclasses import dataclass
 from data_helpers.encoders.meta_class_encoder import MetaClassJsonEncoder
+from data_helpers.cls_parsing import rgetattr
 from enum import Enum
 from typing import List
 
@@ -35,68 +36,127 @@ class Point:
     listNested: List[NestedField] = None
 
 
-examples = [
-    ('point class', Point, json.dumps(dict(
-        name="Point",
-        fields=dict(
-            x=dict(label="X field", default=0, type=dict(
-                default=0,
+example_result = json.dumps(dict(
+    __meta__=dict(label="Point", type="dataclass"),
+    x=dict(__meta__=dict(
+        label="X field",
+        default=0,
+        type=dict(
+            __meta__=dict(
                 label="Integer",
-                uid="int"
-            )),
-            y=dict(label="Y field", default=0, type=dict(
+                base_type="_base",
+                uid="int",
                 default=0,
+            )
+        ))),
+    y=dict(__meta__=dict(
+        label="Y field",
+        default=0,
+        type=dict(
+            __meta__=dict(
                 label="Integer",
-                uid="int"
-            )),
-            label=dict(label="Label", default="Point", type=dict(
-                default="",
-                label="String",
-                uid="str",
-            )),
-            number=dict(label="Integer", default=0, uid="int"),
-            data=dict(label="Dictionary", default={}, uid="dict"),
-            nested=dict(
-                name="NestedField",
-                fields=dict(
-                    label=dict(label="Label", default="Nested", type=dict(
+                base_type="_base",
+                uid="int",
+                default=0,
+            )
+        ))),
+    label=dict(
+        __meta__=dict(
+            label="Label",
+            default="Point",
+            type=dict(
+                __meta__=dict(
+                    default="",
+                    base_type="_base",
+                    label="String",
+                    uid="str",
+                ),
+            )
+        ),
+    ),
+    number=dict(
+        __meta__=dict(label="Integer", base_type="_base", default=0, uid="int"),
+    ),
+    data=dict(
+        __meta__=dict(label="Dictionary", base_type="_base", default={}, uid="dict"),
+    ),
+    nested=dict(
+        __meta__=dict(
+            label="NestedField",
+            type="dataclass",
+        ),
+        label=dict(
+            __meta__=dict(
+                label="Label",
+                default="Nested",
+                type=dict(
+                    __meta__=dict(
                         default="",
+                        base_type="_base",
                         label="String",
                         uid="str",
-                    )),
-                ),
+                    ),
+                )
             ),
-            enum=dict(label="MyEnum", default="MyEnum.A", type="enum", options=["A", "B"]),
-            listNested=dict(
-                type="list",
-                itemType=dict(
-                    name="NestedField",
-                    fields=dict(
-                        label=dict(label="Label", default="Nested", type=dict(
+        ),
+    ),
+    enum=dict(__meta__=dict(
+        label="MyEnum", default="MyEnum.A", type="enum", options=["A", "B"],
+    )),
+    listNested=dict(
+        __meta__=dict(
+            # label="listNested", // TODO: Add label to list
+            type="list",
+        ),
+        _=dict(
+            __meta__=dict(
+                label="NestedField",
+                type="dataclass",
+            ),
+            label=dict(
+                __meta__=dict(
+                    label="Label",
+                    default="Nested",
+                    type=dict(
+                        __meta__=dict(
                             default="",
+                            base_type="_base",
                             label="String",
                             uid="str",
-                        )),
-                    ),
+                        ),
+                    )
                 ),
             ),
         ),
     ),
-        indent=4,
-        sort_keys=True,
-    )),
-]
+),
+    indent=4,
+    sort_keys=True,
+)
 
 
 class TestMetaClassJsonEncoder:
 
-    @ pytest.mark.parametrize('name, example_obj, correct_encoding', examples)
-    def test_can_encode_simple_object(self, name, example_obj, correct_encoding):
+    def test_can_encode_simple_object(self):
         out = json.dumps(
-            example_obj,
+            Point,
             cls=MetaClassJsonEncoder,
             indent=4,
             sort_keys=True,
         )
-        # print(out)
-        assert out == correct_encoding
+        print(out)
+        assert out == example_result
+
+    def test_can_access_a_variable_with_dot_notation(self):
+        out = json.loads(json.dumps(
+            Point,
+            cls=MetaClassJsonEncoder,
+            indent=4,
+            sort_keys=True,
+        ))
+        nested_val = rgetattr(out, 'x.__meta__.label')
+        assert nested_val == "X field"
+
+        nested_val = rgetattr(out, 'listNested._.__meta__.label')
+        print(nested_val)
+        assert nested_val == "NestedField"

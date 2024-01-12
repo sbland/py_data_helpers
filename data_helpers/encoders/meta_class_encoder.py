@@ -5,45 +5,68 @@ from typing import List
 
 default_class_meta = {
     int: {
-        "label": "Integer",
-        "default": 0,
-        "uid": "int",
+        "__meta__": {
+            "label": "Integer",
+            "default": 0,
+            "uid": "int",
+            "base_type": "_base"
+        }
     },
     float: {
-        "label": "Float",
-        "default": 0.0,
-        "uid": "float",
+        "__meta__": {
+            "label": "Float",
+            "default": 0.0,
+            "uid": "float",
+            "base_type": "_base"
+        }
     },
     str: {
-        "label": "String",
-        "default": "",
-        "uid": "str",
+        "__meta__": {
+            "label": "String",
+            "default": "",
+            "uid": "str",
+            "base_type": "_base"
+        }
     },
     bool: {
-        "label": "Boolean",
-        "default": False,
-        "uid": "bool",
+        "__meta__": {
+            "label": "Boolean",
+            "default": False,
+            "uid": "bool",
+            "base_type": "_base"
+        }
     },
     list: {
-        "label": "List",
-        "default": [],
-        "uid": "list",
+        "__meta__": {
+            "label": "List",
+            "default": [],
+            "uid": "list",
+            "base_type": "_base"
+        }
     },
     dict: {
-        "label": "Dictionary",
-        "default": {},
-        "uid": "dict",
+        "__meta__": {
+            "label": "Dictionary",
+            "default": {},
+            "uid": "dict",
+            "base_type": "_base"
+        }
     },
     tuple: {
-        "label": "Tuple",
-        "default": (),
-        "uid": "tuple",
+        "__meta__": {
+            "label": "Tuple",
+            "default": (),
+            "uid": "tuple",
+            "base_type": "_base"
+        }
     },
     set: {
-        "label": "Set",
-        "default": set(),
-        "uid": "set",
-    },
+        "__meta__": {
+            "label": "Set",
+            "default": set(),
+            "uid": "set"
+        }
+    }
 }
 
 
@@ -51,27 +74,34 @@ def parse_objects(obj: any, strict: bool = True):
     if type(obj) == type and obj in default_class_meta:
         return default_class_meta[obj]
     elif is_dataclass(obj) and type(obj) != type:
-        return asdict(obj)
+        # TODO: Should test this more to make sure valid for all uses of dataclasses
+        return dict(__meta__=asdict(obj))
     elif is_dataclass(obj) and type(obj) == type:
-        result = {
-            "name": obj.__name__,
-            "fields": {
-
-            }
-        }
+        result = dict(
+            __meta__=dict(
+                label=obj.__name__,
+                type="dataclass",
+            ),
+        )
         for f in fields(obj):
-            result['fields'][f.name] = parse_objects(f.type, strict=strict)
+            result[f.name] = parse_objects(f.type, strict=strict)
         return result
     elif is_enum(obj):
         return dict(
-            label=obj.__name__,
-            default=str(obj.__members__[list(obj.__members__.keys())[0]]),
-            type="enum",
-            options=[str(i) for i in obj.__members__.keys()],
+            __meta__=dict(
+                label=obj.__name__,
+                default=str(obj.__members__[list(obj.__members__.keys())[0]]),
+                type="enum",
+                options=[str(i) for i in obj.__members__.keys()],
+            ),
         )
     elif type(obj) == type(List):
-        return dict(type="list",
-                    itemType=parse_objects(obj.__args__[0], strict=strict))
+        return dict(
+            __meta__=dict(
+                type="list",
+            ),
+            _=parse_objects(obj.__args__[0], strict=strict),
+        )
     elif isinstance(obj, List):
         return [parse_objects(i) for i in obj]
     else:
