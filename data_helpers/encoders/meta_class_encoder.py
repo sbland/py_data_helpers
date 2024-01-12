@@ -1,55 +1,57 @@
 import json
 from dataclasses import asdict, is_dataclass, fields
-
+from data_helpers.cls_parsing import is_enum
 
 default_class_meta = {
     int: {
         "label": "Integer",
         "default": 0,
-        "type": int,
+        "uid": "int",
     },
     float: {
         "label": "Float",
         "default": 0.0,
-        "type": float,
+        "uid": "float",
     },
     str: {
         "label": "String",
         "default": "",
-        "type": str,
+        "uid": "str",
     },
     bool: {
         "label": "Boolean",
         "default": False,
-        "type": bool,
+        "uid": "bool",
     },
     list: {
         "label": "List",
         "default": [],
-        "type": list,
+        "uid": "list",
     },
     dict: {
         "label": "Dictionary",
         "default": {},
-        "type": dict,
+        "uid": "dict",
     },
     tuple: {
         "label": "Tuple",
         "default": (),
-        "type": tuple,
+        "uid": "tuple",
     },
     set: {
         "label": "Set",
         "default": set(),
-        "type": set,
+        "uid": "set",
     },
 }
 
-def parse_dataclass(obj: type):
-    """Parse a dataclass into a dictionary of meta data."""
-    assert type(obj) == type
-    if is_dataclass(obj):
-        #  This is an adaption of the dataclasses.asdict function
+
+def parse_objects(obj: any):
+    if type(obj) == type and obj in default_class_meta:
+        return default_class_meta[obj]
+    elif is_dataclass(obj) and type(obj) != type:
+        return asdict(obj)
+    elif is_dataclass(obj) and type(obj) == type:
         result = {
             "name": obj.__name__,
             "fields": {
@@ -57,19 +59,18 @@ def parse_dataclass(obj: type):
             }
         }
         for f in fields(obj):
-            if is_dataclass(f.type) and type(f.type) != type:
-                result['fields'][f.name] = asdict(f.type)
-            elif f.type in default_class_meta:
-                result['fields'][f.name] = default_class_meta[f.type]
-            elif is_dataclass(f.type) and type(f.type) == type:
-                # pass
-                result['fields'][f.name] = parse_dataclass(f.type)
-            else:
-                raise NotImplementedError(f"Cannot parse type: {f.type}")
-
+            result['fields'][f.name] = parse_objects(f.type)
         return result
+    elif is_enum(obj):
+        return dict(
+            label=obj.__name__,
+            default=str(obj.__members__[list(obj.__members__.keys())[0]]),
+            type="enum",
+            options=[str(i) for i in obj.__members__.keys()],
+        )
     else:
-        return str(obj.__name__)
+        raise NotImplementedError(f"Cannot parse type: {obj} has type {type(obj)}")
+
 
 class MetaClassJsonEncoder(json.JSONEncoder):
     """ Special json encoder that outputs class meta data.
@@ -85,4 +86,4 @@ class MetaClassJsonEncoder(json.JSONEncoder):
     """
 
     def default(self, obj):
-        return parse_dataclass(obj)
+        return parse_objects(obj)
