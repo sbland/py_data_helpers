@@ -1,6 +1,7 @@
 import json
 from dataclasses import asdict, is_dataclass, fields
 from data_helpers.cls_parsing import is_enum
+from typing import List
 
 default_class_meta = {
     int: {
@@ -46,7 +47,7 @@ default_class_meta = {
 }
 
 
-def parse_objects(obj: any):
+def parse_objects(obj: any, strict: bool = True):
     if type(obj) == type and obj in default_class_meta:
         return default_class_meta[obj]
     elif is_dataclass(obj) and type(obj) != type:
@@ -59,7 +60,7 @@ def parse_objects(obj: any):
             }
         }
         for f in fields(obj):
-            result['fields'][f.name] = parse_objects(f.type)
+            result['fields'][f.name] = parse_objects(f.type, strict=strict)
         return result
     elif is_enum(obj):
         return dict(
@@ -68,8 +69,16 @@ def parse_objects(obj: any):
             type="enum",
             options=[str(i) for i in obj.__members__.keys()],
         )
+    elif type(obj) == type(List):
+        return dict(type="list",
+                    itemType=parse_objects(obj.__args__[0], strict=strict))
+    elif isinstance(obj, List):
+        return [parse_objects(i) for i in obj]
     else:
-        raise NotImplementedError(f"Cannot parse type: {obj} has type {type(obj)}")
+        if strict:
+            raise NotImplementedError(f"Cannot parse type: {obj} has type {type(obj)}")
+        else:
+            return str(obj)
 
 
 class MetaClassJsonEncoder(json.JSONEncoder):

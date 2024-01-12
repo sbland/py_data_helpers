@@ -3,6 +3,7 @@ import pytest
 from dataclasses import dataclass
 from data_helpers.encoders.meta_class_encoder import MetaClassJsonEncoder
 from enum import Enum
+from typing import List
 
 
 @dataclass
@@ -31,6 +32,7 @@ class Point:
     data: dict = None
     nested: NestedField = None
     enum: MyEnum = MyEnum.A
+    listNested: List[NestedField] = None
 
 
 examples = [
@@ -64,7 +66,20 @@ examples = [
                     )),
                 ),
             ),
-            enum=dict(label="MyEnum", default="MyEnum.A", type="enum", options= ["A", "B"]),
+            enum=dict(label="MyEnum", default="MyEnum.A", type="enum", options=["A", "B"]),
+            listNested=dict(
+                type="list",
+                itemType=dict(
+                    name="NestedField",
+                    fields=dict(
+                        label=dict(label="Label", default="Nested", type=dict(
+                            default="",
+                            label="String",
+                            uid="str",
+                        )),
+                    ),
+                ),
+            ),
         ),
     ),
         indent=4,
@@ -83,5 +98,5 @@ class TestMetaClassJsonEncoder:
             indent=4,
             sort_keys=True,
         )
-        print(out)
+        # print(out)
         assert out == correct_encoding
