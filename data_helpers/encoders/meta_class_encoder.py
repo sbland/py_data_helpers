@@ -94,5 +94,7 @@ class MetaClassJsonEncoder(json.JSONEncoder):
 
     """
 
+    strict: bool = True
+
     def default(self, obj):
-        return parse_objects(obj)
+        return parse_objects(obj, strict=self.strict)
