@@ -80,7 +80,15 @@ def parse_objects(obj: any, strict: bool = True):
         result = dict(
             __meta__=dict(
                 label=obj.__name__,
-                type="dataclass",
+                type=dict(
+                    __meta__=dict(
+                        # TODO: Handle type here
+                        label="Dataclass",
+                        base_type="_base",
+                        uid="dataclass",
+                        default=None,
+                    ),
+                ),
             ),
         )
         for f in fields(obj):
@@ -91,7 +99,15 @@ def parse_objects(obj: any, strict: bool = True):
             __meta__=dict(
                 label=obj.__name__,
                 default=str(obj.__members__[list(obj.__members__.keys())[0]]),
-                type="enum",
+                type=dict(
+                    __meta__=dict(
+                        # TODO: Handle type here
+                        label="Enum",
+                        base_type="_base",
+                        uid="enum",
+                        default=None,
+                    ),
+                ),
                 options=[str(i) for i in obj.__members__.keys()],
             ),
         )

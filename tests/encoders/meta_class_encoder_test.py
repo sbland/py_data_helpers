@@ -37,7 +37,15 @@ class Point:
 
 
 example_result = json.dumps(dict(
-    __meta__=dict(label="Point", type="dataclass"),
+    __meta__=dict(label="Point", type=dict(
+        __meta__=dict(
+            # TODO: Handle type here
+            label="Dataclass",
+            base_type="_base",
+            uid="dataclass",
+            default=None,
+        ),
+    )),
     x=dict(__meta__=dict(
         label="X field",
         default=0,
@@ -83,7 +91,15 @@ example_result = json.dumps(dict(
     nested=dict(
         __meta__=dict(
             label="NestedField",
-            type="dataclass",
+            type=dict(
+                __meta__=dict(
+                    # TODO: Handle type here
+                    label="Dataclass",
+                    base_type="_base",
+                    uid="dataclass",
+                    default=None,
+                ),
+            ),
         ),
         label=dict(
             __meta__=dict(
@@ -101,7 +117,18 @@ example_result = json.dumps(dict(
         ),
     ),
     enum=dict(__meta__=dict(
-        label="MyEnum", default="MyEnum.A", type="enum", options=["A", "B"],
+        label="MyEnum",
+        default="MyEnum.A",
+        type=dict(
+            __meta__=dict(
+                # TODO: Handle type here
+                label="Enum",
+                base_type="_base",
+                uid="enum",
+                default=None,
+            ),
+        ),
+        options=["A", "B"],
     )),
     listNested=dict(
         __meta__=dict(
@@ -111,7 +138,15 @@ example_result = json.dumps(dict(
         _=dict(
             __meta__=dict(
                 label="NestedField",
-                type="dataclass",
+                type=dict(
+                    __meta__=dict(
+                        # TODO: Handle type here
+                        label="Dataclass",
+                        base_type="_base",
+                        uid="dataclass",
+                        default=None,
+                    ),
+                ),
             ),
             label=dict(
                 __meta__=dict(
