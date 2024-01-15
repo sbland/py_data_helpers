@@ -71,11 +71,19 @@ default_class_meta = {
 }
 
 
-def parse_objects(obj: any, strict: bool = True):
+def parse_objects(obj: any, current_key: str = None, strict: bool = True):
     if type(obj) == type and obj in default_class_meta:
-        return default_class_meta[obj]
+        return dict(__meta__=dict(
+            label=current_key,
+            type=default_class_meta[obj]))
     elif is_dataclass(obj) and type(obj) != type:
-        # TODO: Should test this more to make sure valid for all uses of dataclasses
+        if hasattr(obj, "type"):
+            # If the dataclass has a type attribute we should parse
+            # it without using the default parser
+            obj_dict = asdict(obj)
+            return dict(__meta__={**obj_dict,
+                "type": default_class_meta[obj_dict['type']]
+            })
         return dict(__meta__=asdict(obj))
     elif is_dataclass(obj) and type(obj) == type:
         result = dict(
@@ -92,7 +100,7 @@ def parse_objects(obj: any, strict: bool = True):
             ),
         )
         for f in fields(obj):
-            result[f.name] = parse_objects(f.type, strict=strict)
+            result[f.name] = parse_objects(f.type, current_key=f.name, strict=strict)
         return result
     elif is_enum(obj):
         return dict(
@@ -140,6 +148,7 @@ class MetaClassJsonEncoder(json.JSONEncoder):
     """
 
     strict: bool = True
+    # current_key: str = None
 
     def default(self, obj):
         return parse_objects(obj, strict=self.strict)

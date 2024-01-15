@@ -83,10 +83,30 @@ example_result = json.dumps(dict(
         ),
     ),
     number=dict(
-        __meta__=dict(label="Integer", primative=True, default=0, uid="int"),
+        __meta__=dict(
+            label="number",
+            type=dict(
+                __meta__=dict(
+                    label="Integer",
+                    primative=True,
+                    default=0,
+                    uid="int",
+                ),
+            ),
+        ),
     ),
     data=dict(
-        __meta__=dict(label="Dictionary", primative=True, default={}, uid="dict"),
+        __meta__=dict(
+            label="data",
+            type=dict(
+                __meta__=dict(
+                    label="Dictionary",
+                    primative=True,
+                    default={},
+                    uid="dict",
+                ),
+            ),
+        ),
     ),
     nested=dict(
         __meta__=dict(
