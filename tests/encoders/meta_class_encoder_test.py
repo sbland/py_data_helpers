@@ -9,7 +9,7 @@ from data_helpers.meta_type import FieldType
 
 @dataclass
 class NestedField:
-    label: FieldType("Label", "Nested", str)
+    label: FieldType("Label", str, "Nested")
 
 
 class MyEnum(Enum):
@@ -19,9 +19,9 @@ class MyEnum(Enum):
 
 @dataclass
 class Point:
-    x: FieldType("X field", 0, int)
-    y: FieldType("Y field", 0, int) = 0
-    label: FieldType("Label", "Point", str) = "MISSING_LABEL"
+    x: FieldType("X field", int, 0)
+    y: FieldType("Y field", int, 0) = 0
+    label: FieldType("Label", str, "Point") = "MISSING_LABEL"
     number: int = 1  # TODO: Get default from  = 1
     data: dict = None
     nested: NestedField = None

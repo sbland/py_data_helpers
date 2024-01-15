@@ -5,7 +5,8 @@ from dataclasses import dataclass
 @dataclass
 class FieldType:
     label: str
-    default: float
     type: type
+    default: None
+
 
 
