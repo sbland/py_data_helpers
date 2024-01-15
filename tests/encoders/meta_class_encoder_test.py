@@ -1,22 +1,15 @@
 import json
-import pytest
 from dataclasses import dataclass
+from typing import List
+from enum import Enum
 from data_helpers.encoders.meta_class_encoder import MetaClassJsonEncoder
 from data_helpers.cls_parsing import rgetattr
-from enum import Enum
-from typing import List
-
-
-@dataclass
-class SciField:
-    label: str
-    default: float
-    type: type
+from data_helpers.meta_type import FieldType
 
 
 @dataclass
 class NestedField:
-    label: SciField("Label", "Nested", str)
+    label: FieldType("Label", "Nested", str)
 
 
 class MyEnum(Enum):
@@ -26,9 +19,9 @@ class MyEnum(Enum):
 
 @dataclass
 class Point:
-    x: SciField("X field", 0, int)
-    y: SciField("Y field", 0, int) = 0
-    label: SciField("Label", "Point", str) = "MISSING_LABEL"
+    x: FieldType("X field", 0, int)
+    y: FieldType("Y field", 0, int) = 0
+    label: FieldType("Label", "Point", str) = "MISSING_LABEL"
     number: int = 1  # TODO: Get default from  = 1
     data: dict = None
     nested: NestedField = None
