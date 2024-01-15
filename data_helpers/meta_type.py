@@ -7,6 +7,7 @@ class FieldType:
     label: str
     type: type
     default: None
+    description: str = ""
 
 
 
