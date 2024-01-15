@@ -41,7 +41,7 @@ default_class_meta = {
             "label": "List",
             "default": [],
             "uid": "list",
-            "primative": True
+            "primative": False
         }
     },
     dict: {
@@ -49,25 +49,9 @@ default_class_meta = {
             "label": "Dictionary",
             "default": {},
             "uid": "dict",
-            "primative": True
+            "primative": False
         }
     },
-    tuple: {
-        "__meta__": {
-            "label": "Tuple",
-            "default": (),
-            "uid": "tuple",
-            "primative": True
-        }
-    },
-    set: {
-        "__meta__": {
-            "label": "Set",
-            "default": set(),
-            "uid": "set",
-            "primative": True
-        }
-    }
 }
 
 
@@ -118,15 +102,16 @@ def parse_objects(obj: any, current_key: str = None, strict: bool = True):
                 options=[str(i) for i in obj.__members__.keys()],
             ),
         )
-    elif type(obj) == type(List):
+    # elif hasattr(obj, "__args__") and obj.__origin__ == List:
+    elif hasattr(obj, "__args__") and obj.__origin__ == list:
+        print(obj.__dict__)
         return dict(
             __meta__=dict(
-                type="list",
+                label=current_key,
+                type=default_class_meta[list],
             ),
             _=parse_objects(obj.__args__[0], strict=strict),
         )
-    elif isinstance(obj, List):
-        return [parse_objects(i) for i in obj]
     else:
         if strict:
             raise NotImplementedError(f"Cannot parse type: {obj} has type {type(obj)}")

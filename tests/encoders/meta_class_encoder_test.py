@@ -94,7 +94,7 @@ example_result = json.dumps(dict(
             type=dict(
                 __meta__=dict(
                     label="Dictionary",
-                    primative=True,
+                    primative=False,
                     default={},
                     uid="dict",
                 ),
@@ -143,8 +143,15 @@ example_result = json.dumps(dict(
     )),
     listNested=dict(
         __meta__=dict(
-            # label="listNested", // TODO: Add label to list
-            type="list",
+            label="listNested",
+            type=dict(
+                __meta__=dict(
+                    label="List",
+                    primative=False,
+                    default=[],
+                    uid="list",
+                ),
+            ),
         ),
         _=dict(
             __meta__=dict(
