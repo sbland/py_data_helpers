@@ -6,7 +6,7 @@ from dataclasses import dataclass
 class FieldType:
     label: str
     type: type
-    default: None
+    default: any = None
     description: str = None
 
 
@@ -15,6 +15,6 @@ class FieldType:
 class SciFieldType:
     label: str
     type: type
-    default: None
+    default: None = None
     description: str = None
     unit: str = None
