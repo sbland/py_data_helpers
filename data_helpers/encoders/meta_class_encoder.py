@@ -58,6 +58,7 @@ default_class_meta = {
 def parse_objects(obj: any, current_key: str = None, strict: bool = True):
     if type(obj) == type and obj in default_class_meta:
         return dict(__meta__=dict(
+            id=current_key,
             label=current_key,
             type=default_class_meta[obj]))
     elif is_dataclass(obj) and type(obj) != type:
@@ -66,6 +67,8 @@ def parse_objects(obj: any, current_key: str = None, strict: bool = True):
             # it without using the default parser
             obj_dict = asdict(obj)
             return dict(__meta__={**obj_dict,
+                "id": current_key,
+                "label": obj_dict['label'] or current_key,
                 "type": default_class_meta[obj_dict['type']]
             })
         return dict(__meta__=asdict(obj))
@@ -73,6 +76,7 @@ def parse_objects(obj: any, current_key: str = None, strict: bool = True):
         result = dict(
             __meta__=dict(
                 label=obj.__name__,
+                id=current_key,
                 type=dict(
                     __meta__=dict(
                         label="Dataclass",
@@ -89,6 +93,7 @@ def parse_objects(obj: any, current_key: str = None, strict: bool = True):
     elif is_enum(obj):
         return dict(
             __meta__=dict(
+                id=current_key,
                 label=obj.__name__,
                 default=str(obj.__members__[list(obj.__members__.keys())[0]]),
                 type=dict(
@@ -104,13 +109,13 @@ def parse_objects(obj: any, current_key: str = None, strict: bool = True):
         )
     # elif hasattr(obj, "__args__") and obj.__origin__ == List:
     elif hasattr(obj, "__args__") and obj.__origin__ == list:
-        print(obj.__dict__)
         return dict(
             __meta__=dict(
+                id=current_key,
                 label=current_key,
                 type=default_class_meta[list],
             ),
-            _=parse_objects(obj.__args__[0], strict=strict),
+            _=parse_objects(obj.__args__[0],current_key="_", strict=strict),
         )
     else:
         if strict:

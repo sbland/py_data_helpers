@@ -31,7 +31,7 @@ class Point:
 
 # TODO: Change primative to primative
 example_result = json.dumps(dict(
-    __meta__=dict(label="Point", type=dict(
+    __meta__=dict(label="Point", id=None, type=dict(
         __meta__=dict(
             label="Dataclass",
             primative=False,
@@ -39,32 +39,42 @@ example_result = json.dumps(dict(
             default=None,
         ),
     )),
-    x=dict(__meta__=dict(
-        label="X field",
-        default=0,
-        type=dict(
-            __meta__=dict(
-                label="Integer",
-                primative=True,
-                uid="int",
-                default=0,
+    x=dict(
+        __meta__=dict(
+            label="X field",
+            id="x",
+            default=0,
+            description=None,
+            type=dict(
+                __meta__=dict(
+                    label="Integer",
+                    primative=True,
+                    uid="int",
+                    default=0,
+                ),
             ),
-        ))),
-    y=dict(__meta__=dict(
-        label="Y field",
-        default=0,
-        type=dict(
-            __meta__=dict(
-                label="Integer",
-                primative=True,
-                uid="int",
-                default=0,
+        )),
+    y=dict(
+        __meta__=dict(
+            label="Y field",
+            id="y",
+            default=0,
+            description=None,
+            type=dict(
+                __meta__=dict(
+                    label="Integer",
+                    primative=True,
+                    uid="int",
+                    default=0,
+                ),
             ),
-        ))),
+        )),
     label=dict(
         __meta__=dict(
             label="Label",
+            id="label",
             default="Point",
+            description=None,
             type=dict(
                 __meta__=dict(
                     label="String",
@@ -78,6 +88,7 @@ example_result = json.dumps(dict(
     number=dict(
         __meta__=dict(
             label="number",
+            id="number",
             type=dict(
                 __meta__=dict(
                     label="Integer",
@@ -91,6 +102,7 @@ example_result = json.dumps(dict(
     data=dict(
         __meta__=dict(
             label="data",
+            id="data",
             type=dict(
                 __meta__=dict(
                     label="Dictionary",
@@ -104,6 +116,7 @@ example_result = json.dumps(dict(
     nested=dict(
         __meta__=dict(
             label="NestedField",
+            id="nested",
             type=dict(
                 __meta__=dict(
                     label="Dataclass",
@@ -116,7 +129,9 @@ example_result = json.dumps(dict(
         label=dict(
             __meta__=dict(
                 label="Label",
+                id="label",
                 default="Nested",
+                description=None,
                 type=dict(
                     __meta__=dict(
                         default="",
@@ -130,6 +145,7 @@ example_result = json.dumps(dict(
     ),
     enum=dict(__meta__=dict(
         label="MyEnum",
+        id="enum",
         default="MyEnum.A",
         type=dict(
             __meta__=dict(
@@ -143,6 +159,7 @@ example_result = json.dumps(dict(
     )),
     listNested=dict(
         __meta__=dict(
+            id="listNested",
             label="listNested",
             type=dict(
                 __meta__=dict(
@@ -156,6 +173,7 @@ example_result = json.dumps(dict(
         _=dict(
             __meta__=dict(
                 label="NestedField",
+                id="_",
                 type=dict(
                     __meta__=dict(
                         label="Dataclass",
@@ -167,8 +185,10 @@ example_result = json.dumps(dict(
             ),
             label=dict(
                 __meta__=dict(
+                    id="label",
                     label="Label",
                     default="Nested",
+                    description=None,
                     type=dict(
                         __meta__=dict(
                             default="",
