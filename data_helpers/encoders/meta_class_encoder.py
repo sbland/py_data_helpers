@@ -9,7 +9,7 @@ default_class_meta = {
             "label": "Integer",
             "default": 0,
             "uid": "int",
-            "base_type": "_base"
+            "primative": True
         }
     },
     float: {
@@ -17,7 +17,7 @@ default_class_meta = {
             "label": "Float",
             "default": 0.0,
             "uid": "float",
-            "base_type": "_base"
+            "primative": True
         }
     },
     str: {
@@ -25,7 +25,7 @@ default_class_meta = {
             "label": "String",
             "default": "",
             "uid": "str",
-            "base_type": "_base"
+            "primative": True
         }
     },
     bool: {
@@ -33,7 +33,7 @@ default_class_meta = {
             "label": "Boolean",
             "default": False,
             "uid": "bool",
-            "base_type": "_base"
+            "primative": True
         }
     },
     list: {
@@ -41,7 +41,7 @@ default_class_meta = {
             "label": "List",
             "default": [],
             "uid": "list",
-            "base_type": "_base"
+            "primative": True
         }
     },
     dict: {
@@ -49,7 +49,7 @@ default_class_meta = {
             "label": "Dictionary",
             "default": {},
             "uid": "dict",
-            "base_type": "_base"
+            "primative": True
         }
     },
     tuple: {
@@ -57,14 +57,15 @@ default_class_meta = {
             "label": "Tuple",
             "default": (),
             "uid": "tuple",
-            "base_type": "_base"
+            "primative": True
         }
     },
     set: {
         "__meta__": {
             "label": "Set",
             "default": set(),
-            "uid": "set"
+            "uid": "set",
+            "primative": True
         }
     }
 }
@@ -82,9 +83,8 @@ def parse_objects(obj: any, strict: bool = True):
                 label=obj.__name__,
                 type=dict(
                     __meta__=dict(
-                        # TODO: Handle type here
                         label="Dataclass",
-                        base_type="_base",
+                        primative=False,
                         uid="dataclass",
                         default=None,
                     ),
@@ -101,9 +101,8 @@ def parse_objects(obj: any, strict: bool = True):
                 default=str(obj.__members__[list(obj.__members__.keys())[0]]),
                 type=dict(
                     __meta__=dict(
-                        # TODO: Handle type here
                         label="Enum",
-                        base_type="_base",
+                        primative=True,
                         uid="enum",
                         default=None,
                     ),

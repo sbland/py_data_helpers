@@ -36,12 +36,12 @@ class Point:
     listNested: List[NestedField] = None
 
 
+# TODO: Change primative to primative
 example_result = json.dumps(dict(
     __meta__=dict(label="Point", type=dict(
         __meta__=dict(
-            # TODO: Handle type here
             label="Dataclass",
-            base_type="_base",
+            primative=False,
             uid="dataclass",
             default=None,
         ),
@@ -52,10 +52,10 @@ example_result = json.dumps(dict(
         type=dict(
             __meta__=dict(
                 label="Integer",
-                base_type="_base",
+                primative=True,
                 uid="int",
                 default=0,
-            )
+            ),
         ))),
     y=dict(__meta__=dict(
         label="Y field",
@@ -63,10 +63,10 @@ example_result = json.dumps(dict(
         type=dict(
             __meta__=dict(
                 label="Integer",
-                base_type="_base",
+                primative=True,
                 uid="int",
                 default=0,
-            )
+            ),
         ))),
     label=dict(
         __meta__=dict(
@@ -74,28 +74,27 @@ example_result = json.dumps(dict(
             default="Point",
             type=dict(
                 __meta__=dict(
-                    default="",
-                    base_type="_base",
                     label="String",
+                    default="",
+                    primative=True,
                     uid="str",
                 ),
-            )
+            ),
         ),
     ),
     number=dict(
-        __meta__=dict(label="Integer", base_type="_base", default=0, uid="int"),
+        __meta__=dict(label="Integer", primative=True, default=0, uid="int"),
     ),
     data=dict(
-        __meta__=dict(label="Dictionary", base_type="_base", default={}, uid="dict"),
+        __meta__=dict(label="Dictionary", primative=True, default={}, uid="dict"),
     ),
     nested=dict(
         __meta__=dict(
             label="NestedField",
             type=dict(
                 __meta__=dict(
-                    # TODO: Handle type here
                     label="Dataclass",
-                    base_type="_base",
+                    primative=False,
                     uid="dataclass",
                     default=None,
                 ),
@@ -108,7 +107,7 @@ example_result = json.dumps(dict(
                 type=dict(
                     __meta__=dict(
                         default="",
-                        base_type="_base",
+                        primative=True,
                         label="String",
                         uid="str",
                     ),
@@ -121,9 +120,8 @@ example_result = json.dumps(dict(
         default="MyEnum.A",
         type=dict(
             __meta__=dict(
-                # TODO: Handle type here
                 label="Enum",
-                base_type="_base",
+                primative=True,
                 uid="enum",
                 default=None,
             ),
@@ -140,9 +138,8 @@ example_result = json.dumps(dict(
                 label="NestedField",
                 type=dict(
                     __meta__=dict(
-                        # TODO: Handle type here
                         label="Dataclass",
-                        base_type="_base",
+                        primative=False,
                         uid="dataclass",
                         default=None,
                     ),
@@ -155,11 +152,11 @@ example_result = json.dumps(dict(
                     type=dict(
                         __meta__=dict(
                             default="",
-                            base_type="_base",
+                            primative=True,
                             label="String",
                             uid="str",
                         ),
-                    )
+                    ),
                 ),
             ),
         ),
