@@ -43,7 +43,7 @@ examples = [
     ('dataclass_nested', Bar(Foo()), '{"inner": {"hello": "world"}}'),
     ('Enum', {"hello": EnumA.HELLO}, '{"hello": "WORLD"}'),
     ('SimpleClass_with_asdict', SimpleCls("world"),
-     '{"hello": "world", "_parentcls": "<class \'tests.encoders_test.SimpleCls\'>"}'),
+     '{"hello": "world", "_parentcls": "<class \'tests.encoders.encoders_test.SimpleCls\'>"}'),
     ('Type', {"hello": str}, '{"hello": "<class \'str\'>"}'),
 ]
 
