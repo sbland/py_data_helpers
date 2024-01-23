@@ -1,15 +1,17 @@
 import pytest
 import json
+from enum import Enum
 from data_helpers.encoders import *
 import numpy as np
 from dataclasses import dataclass
+from data_helpers.meta_type import FieldType
 
-from enum import Enum
 
 
 @dataclass
 class Foo:
     hello: str = "world"
+    number: FieldType("Number Field", int, 1) = 1
 
 
 @dataclass
@@ -39,8 +41,8 @@ examples = [
     ('numpy_simple', {"hello": np.array(["world"])}, '{"hello": ["world"]}'),
     ('numpy_nested', {"hello": [np.array(["world"])]}, '{"hello": [["world"]]}'),
     ('numpy_multi_dim', {"hello": np.arange(4).reshape((2, 2))}, '{"hello": [[0, 1], [2, 3]]}'),
-    ('dataclass', Foo(), '{"hello": "world"}'),
-    ('dataclass_nested', Bar(Foo()), '{"inner": {"hello": "world"}}'),
+    ('dataclass', Foo(), '{"hello": "world", "number": 1}'),
+    ('dataclass_nested', Bar(Foo()), '{"inner": {"hello": "world", "number": 1}}'),
     ('Enum', {"hello": EnumA.HELLO}, '{"hello": "WORLD"}'),
     ('SimpleClass_with_asdict', SimpleCls("world"),
      '{"hello": "world", "_parentcls": "<class \'tests.encoders.encoders_test.SimpleCls\'>"}'),
@@ -73,3 +75,4 @@ class TestAdvancedJsonDecoder:
             cls=AdvancedJsonEncoder,
         )
         assert out_recoded == correct_encoding
+

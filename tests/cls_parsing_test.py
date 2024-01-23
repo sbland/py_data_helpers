@@ -4,6 +4,7 @@ from enum import Enum
 from dataclasses import dataclass
 from typing import NamedTuple, List, Sequence, Tuple, Union, TypeVar
 import pytest
+from data_helpers.meta_type import FieldType
 
 from data_helpers.cls_parsing import (
     dict_to_cls,
@@ -32,6 +33,7 @@ class DemoEnum(Enum):
 class DemoDataclass:
     foo: int
     bar: str = "hello"
+    number: FieldType("Number Field", int, 1) = 1
 
 
 @dataclass
@@ -68,7 +70,7 @@ def test_parse_list_val(f, t, v, result, error):
 
 
 @pytest.mark.parametrize(['f', 't', 'v', 'result', 'error'], [
-    ('field', DemoDataclass, {"foo": 1, "bar": "world"}, DemoDataclass(1, "world"), None),
+    ('field', DemoDataclass, {"foo": 1, "bar": "world", "number": 3}, DemoDataclass(1, "world", 3), None),
     ('field', DemoDataclass, {}, None, None),
     ('field', DemoDataclassSimple, {}, DemoDataclassSimple(), None),
 ])

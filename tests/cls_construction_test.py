@@ -335,7 +335,6 @@ class TestConfigGeneratorUi:
         # config_ui.field_inputs[6][1][0].value = 3
         # config_ui.field_inputs[7][1][0][1][0].value = 1
         data = config_ui.get_data_dict()
-        print(data)
         assert data == {
             'foo': '',
             'sel': 'a',

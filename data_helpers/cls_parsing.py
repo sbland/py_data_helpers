@@ -12,6 +12,7 @@ from data_helpers.comparisons import (
     is_iterable,
     is_named_tuple,
     is_union,
+    is_field_class,
 )
 
 from data_helpers.dictionary_helpers import get_nested_val
@@ -137,6 +138,9 @@ def parse_list_val(f, t, v, strict=False):
             if v is None:
                 return []
             return [parse_list_val(f, item_type, vi) for vi in v]
+        if is_field_class(item_type):
+            return [get_parser(item_type.type)(f, item_type.type, vi) for vi in v]
+            # TODO: Handle field class
         if is_dataclass(item_type):
             return [dict_to_cls(vi, item_type, strict) or item_type() for vi in v]
         if is_named_tuple(item_type):
@@ -217,6 +221,8 @@ def get_parser(t) -> Callable[[str, type, Any, bool], object]:
         if not all(is_base_cls(a) for a in t.__args__):
             raise ValueError("Invalid Union Type: Can only parse Unions of base classes")
         return get_parser(t.__args__[0])
+    if is_field_class(t):
+        return get_parser(t.type)
     if is_dataclass(t):
         return parse_dataclass_val
     if is_dictionary(t):

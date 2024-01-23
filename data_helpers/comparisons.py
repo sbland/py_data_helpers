@@ -86,6 +86,11 @@ def is_base_cls(t) -> bool:
     return False
 
 
+def is_field_class(t) -> bool:
+    if hasattr(t, '__is_field_type__'):
+        return True
+    return False
+
 def is_dictionary(t) -> bool:
     return t == type({"foo": "bar"})
 
