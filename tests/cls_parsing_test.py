@@ -17,6 +17,7 @@ from data_helpers.cls_parsing import (
     parse_list_val,
     rsetattr,
     rgetattr,
+    check_types,
 )
 
 if sys.version_info <= (3, 9):
@@ -554,3 +555,18 @@ class TestRsetattr:
         assert out['foo'][3] == 'bar'
         assert out['foo'][0] == None
         assert len(out['foo']) == 4
+
+
+class TestCheckTypes:
+
+
+
+    def test_can_check_some_data(self):
+        config_data = {
+            "foo": 1,
+            "bar": "world",
+            "number": 3,
+        }
+
+        config: Union[DemoDataclass, None] = dict_to_cls(config_data, DemoDataclass)
+        check_types(config)

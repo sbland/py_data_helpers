@@ -354,7 +354,8 @@ def check_types(obj):
     """Check all input types are correct. Raises Exception if not."""
     for f, f_type in obj.__annotations__.items():
         actual_f_type = getattr(obj, f)
-        if actual_f_type is not None and not isinstance(actual_f_type, f_type):
+        validate_type = f_type if not is_field_class(f_type) else f_type.type
+        if actual_f_type is not None and not isinstance(actual_f_type, validate_type):
             raise TypeError('{} must be {} but is {}'
-                            .format(f, f_type, actual_f_type))
+                            .format(f, validate_type, actual_f_type))
     return obj
