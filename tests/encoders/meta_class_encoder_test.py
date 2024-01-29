@@ -31,7 +31,7 @@ class Point:
 
 # TODO: Change primative to primative
 example_result = json.dumps(dict(
-    __meta__=dict(label="Point", id=None, type=dict(
+    __meta__=dict(label="Point", id="Point", type=dict(
         __meta__=dict(
             label="Dataclass",
             primative=False,

@@ -1,7 +1,6 @@
 import json
 from dataclasses import asdict, is_dataclass, fields
 from data_helpers.cls_parsing import is_enum
-from typing import List
 
 default_class_meta = {
     int: {
@@ -141,4 +140,4 @@ class MetaClassJsonEncoder(json.JSONEncoder):
     # current_key: str = None
 
     def default(self, obj):
-        return parse_objects(obj, strict=self.strict)
+        return parse_objects(obj, current_key=obj.__name__,  strict=self.strict)
