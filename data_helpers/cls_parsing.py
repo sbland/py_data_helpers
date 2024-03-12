@@ -172,6 +172,9 @@ def parse_dataclass_val(f, t, v, strict=False):
             if "missing" in str(e):
                 # We are missing required inputs to this class
                 return None
+            if "object is not callable" in str(e):
+                # Class is not callable
+                return None
             else:
                 raise e
         return None
@@ -212,6 +215,7 @@ def get_parser(t) -> Callable[[str, type, Any, bool], object]:
     TypeError
         Raised if the supplied type has not been implemented
     """
+
 
     if is_base_cls(t):
         return parse_base_val
@@ -257,11 +261,28 @@ def dict_to_cls(data: dict, Cls, strict=False):
     # f = field; t = type; v = value
     for (f, t, v) in zip(cls_fields, cls_field_types, data_values):
         # TODO: If t is string then we need to import the type
-        parser = get_parser(t)
-        d = parser(f, t, v)
-        new_data[f] = d
 
-    cls_out = Cls(**new_data)
+        is_meta_type = is_field_class(t)
+        tt = t
+        if is_meta_type:
+            tt = t.type
+
+        parser = get_parser(t)
+        d = parser(f, tt, v)
+        new_data[f] = d
+    try:
+        cls_out = Cls(**new_data)
+    except TypeError as e:
+        if "missing" in str(e):
+            # We are missing required inputs to this class
+            print("Missing required inputs to class", Cls.__name__)
+            raise e
+        if "object is not callable" in str(e):
+            # Class is not callable
+            print("Class is not callable", Cls)
+            raise e
+        else:
+            raise e
     return cls_out
 
 
