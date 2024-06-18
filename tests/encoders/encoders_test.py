@@ -1,11 +1,11 @@
 import pytest
 import json
 from enum import Enum
+from datetime import datetime
 from data_helpers.encoders import *
 import numpy as np
 from dataclasses import dataclass
 from data_helpers.meta_type import FieldType
-
 
 
 @dataclass
@@ -47,6 +47,10 @@ examples = [
     ('SimpleClass_with_asdict', SimpleCls("world"),
      '{"hello": "world", "_parentcls": "<class \'tests.encoders.encoders_test.SimpleCls\'>"}'),
     ('Type', {"hello": str}, '{"hello": "<class \'str\'>"}'),
+    ('datetime', {'datetime': {"hello": datetime(2021, 1, 1, 0, 0)}},
+     '{"datetime": {"hello": "2021-01-01T00:00:00"}}'),
+    ('timedelta', {'datetime': {"hello": datetime(2021, 1, 1, 0, 0) -
+     datetime(2020, 1, 1, 0, 0)}}, '{"datetime": {"hello": 31622400.0}}'),
 ]
 
 
@@ -75,4 +79,3 @@ class TestAdvancedJsonDecoder:
             cls=AdvancedJsonEncoder,
         )
         assert out_recoded == correct_encoding
-

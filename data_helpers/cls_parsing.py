@@ -82,7 +82,7 @@ def rsetattr(obj: object, attr: Union[str, List[str]], val: Any, create_missing_
     elif target is None:
         raise ValueError(f"{pre} is None")
     else:
-        raise ValueError(f"Unrecognised Type {pre}")
+        raise ValueError(f"Unrecognised Type {pre} - {target}")
     return obj_copy
 
 

@@ -4,6 +4,7 @@ from dataclasses import asdict, is_dataclass
 import json
 import numpy as np
 import warnings
+from datetime import datetime, timedelta
 
 
 from enum import Enum
@@ -59,6 +60,10 @@ class AdvancedJsonEncoder(json.JSONEncoder):
                 if self.parse_functions:
                     return "PLACEHOLDER_FUNC"
                 raise NotImplementedError(f"Cannot parse function: {obj}")
+            elif isinstance(obj, datetime):
+                return obj.isoformat()
+            elif isinstance(obj, timedelta):
+                return obj.total_seconds()
             return json.JSONEncoder.default(self, obj)
         except Exception as e:
             if self.throw_errors:
@@ -66,6 +71,7 @@ class AdvancedJsonEncoder(json.JSONEncoder):
             else:
                 warnings.warn(f"Failed to parse object: {obj}")
                 return "FAILED_TO_PARSE"
+
 
 class AdvancedJsonDecoder(json.JSONDecoder):
     """Special json decoder."""
