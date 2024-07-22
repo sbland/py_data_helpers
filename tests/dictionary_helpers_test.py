@@ -10,6 +10,7 @@ from data_helpers.dictionary_helpers import (
     merge_dictionaries,
     find_key,
     find_all_keys,
+    flatten_dict,
 )
 
 
@@ -1091,3 +1092,51 @@ class TestFindAllKeys:
         assert k_out[1] == "bar.0.ree.foo"
         assert k_out[2] == "bar.1.foo"
         assert k_out[3] == "bar.1.ree.foo"
+
+
+class TestFlattenDict:
+    def test_flatten_dict(self):
+        data = {
+            'foo': 1,
+            'bar': {
+                'roo': 4,
+                'ree': {
+                    'sow': 10,
+                }
+            },
+        }
+        result = flatten_dict(data)
+        print(result)
+        assert result == {
+            'foo': 1,
+            'bar.roo': 4,
+            'bar.ree.sow': 10,
+        }
+    def test_flatten_dict_no_nested(self):
+        data = {
+            'a': "Foo",
+        }
+        result = flatten_dict(data)
+        assert result == {
+            'a': "Foo",
+        }
+
+    def test_flatten_dict_nested_list(self):
+        data = {
+            'foo': 1,
+            'arr': [1, 2, 3],
+            'matrix': [[1, 2, 3], [4, 5, 6]]
+        }
+        result = flatten_dict(data)
+        assert result == {
+            'foo': 1,
+            'arr.0': 1,
+            'arr.1': 2,
+            'arr.2': 3,
+            'matrix.0.0': 1,
+            'matrix.0.1': 2,
+            'matrix.0.2': 3,
+            'matrix.1.0': 4,
+            'matrix.1.1': 5,
+            'matrix.1.2': 6,
+        }

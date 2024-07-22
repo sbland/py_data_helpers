@@ -222,14 +222,36 @@ def find_all_keys(obj: object, k: str, prefix: str = '') -> List[str]:
                     for i, v in enumerate(obj[kk]):
                         keys.extend(find_all_keys(v, k, prefix + kk + "." + str(i) + "."))
     return keys
-    # keys = []
-    # if type(obj) == type({}):
-    #     for kk in obj.keys():
-    #         if kk == k:
-    #             keys.append(prefix + kk)
-    #         else:
-    #             if isinstance(obj[kk], dict):
-    #                 keys.extend(find_all_keys(obj[kk], k, prefix + kk + "."))
-    #             else:
-    #                 keys.extend(find_all_keys(obj[kk], k, prefix + kk + "."))
-    # return keys
+
+
+def _flatten_dict_item(k, v, parent_key='', sep='.') -> dict:
+    new_key = f"{parent_key}{sep}{k}" if parent_key else k
+    out = {}
+    if isinstance(v, dict):
+        out.update(flatten_dict(v, new_key, sep=sep))
+    elif isinstance(v, list):
+        for i, vv in enumerate(v):
+            new_key_nested = f"{parent_key}{sep}{k}{sep}{i}" if parent_key else f"{k}{sep}{i}"
+            nested_val = _flatten_dict_item(new_key_nested, vv, parent_key, sep)
+            out.update(nested_val)
+    else:
+        out[new_key] = v
+    return out
+
+
+def flatten_dict(data: dict, parent_key='', sep='.') -> dict:
+    """Flatten a nested dictionary.
+
+    Args:
+        data (dict): The nested dictionary to flatten.
+        parent_key (str, optional): The parent key. Defaults to ''.
+        sep (str, optional): The separator. Defaults to '.'.
+
+    Returns:
+        dict:  The flattened dictionary.
+    """
+    out = {}
+    for k, v in data.items():
+        v = _flatten_dict_item(k, v, parent_key, sep)
+        out.update(v)
+    return out
