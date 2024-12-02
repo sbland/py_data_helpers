@@ -1,7 +1,7 @@
 import enum
 from warnings import warn
 from dataclasses import asdict, is_dataclass, replace
-from typing import Any, Callable, NamedTuple, List, Union, TypeVar
+from typing import Any, Callable, NamedTuple, List, Union, TypeVar, get_args
 from copy import deepcopy
 from functools import reduce
 import numpy as np
@@ -29,17 +29,34 @@ def rgetattr(obj: object, attr: Union[str, List[str]], *args):
     obj: object  [description]
     attr: OneOf[str, List[str]]  Either a dot notation string or list of strings
     """
+
     def _getattr(obj, attr):
-        return obj[int(attr)] if isinstance(obj, list) \
-            else obj[int(attr)] if type(obj).__module__ == 'numpy' \
-            else obj.get(attr, None) if isinstance(obj, dict) \
+        return (
+            obj[int(attr)]
+            if isinstance(obj, list)
+            else obj[int(attr)]
+            if type(obj).__module__ == "numpy"
+            else obj.get(attr, None)
+            if isinstance(obj, dict)
             else getattr(obj, attr, *args)
-    attr_list = attr if isinstance(attr, list) else attr.split(
-        '.') if isinstance(attr, str) else [attr]
+        )
+
+    attr_list = (
+        attr
+        if isinstance(attr, list)
+        else attr.split(".")
+        if isinstance(attr, str)
+        else [attr]
+    )
     return reduce(_getattr, [obj] + attr_list)
 
 
-def rsetattr(obj: object, attr: Union[str, List[str]], val: Any, create_missing_dicts: bool = False):
+def rsetattr(
+    obj: object,
+    attr: Union[str, List[str]],
+    val: Any,
+    create_missing_dicts: bool = False,
+):
     """Set nested attributes with dot string path or string list
 
     https://stackoverflow.com/questions/31174295/getattr-and-setattr-on-nested-subobjects-chained-properties
@@ -54,13 +71,18 @@ def rsetattr(obj: object, attr: Union[str, List[str]], val: Any, create_missing_
     obj_copy = obj
     # pre - path to current location
     # post - current key
-    pre, _, post = [attr[0], '.', '.'.join(attr[1:])] if isinstance(attr, list) \
-        else attr.rpartition('.') if isinstance(attr, str) else [None, None, attr]
+    pre, _, post = (
+        [attr[0], ".", ".".join(attr[1:])]
+        if isinstance(attr, list)
+        else attr.rpartition(".")
+        if isinstance(attr, str)
+        else [None, None, attr]
+    )
     # target = deepcopy(rgetattr(obj, pre) if pre else obj)
     try:
         target = rgetattr(obj_copy, pre) if pre else obj_copy
         if target is None:
-            raise AttributeError(f'{pre} not found')
+            raise AttributeError(f"{pre} not found")
     except AttributeError as e:
         if create_missing_dicts:
             new_dict = {} if not post.isnumeric() else []
@@ -96,8 +118,13 @@ def rdelattr(obj: object, attr: Union[str, List[str]]):
     """
     # obj_copy = deepcopy(obj) # deep copy takes 10 times as long!
     obj_copy = obj
-    pre, _, post = [attr[0], '.', '.'.join(attr[1:])] if isinstance(attr, list) \
-        else attr.rpartition('.') if isinstance(attr, str) else [None, None, attr]
+    pre, _, post = (
+        [attr[0], ".", ".".join(attr[1:])]
+        if isinstance(attr, list)
+        else attr.rpartition(".")
+        if isinstance(attr, str)
+        else [None, None, attr]
+    )
     # target = deepcopy(rgetattr(obj, pre) if pre else obj)
     target = rgetattr(obj_copy, pre) if pre else obj_copy
     if isinstance(target, list):
@@ -115,7 +142,7 @@ def rdelattr(obj: object, attr: Union[str, List[str]]):
 def parse_base_val(f, t, v, strict=False):
     # Check types
     if strict and not isinstance(v, t):
-        raise TypeError('{} must be {}'.format(f, t))
+        raise TypeError("{} must be {}".format(f, t))
     return v
 
 
@@ -127,8 +154,8 @@ def parse_list_val(f, t, v, strict=False):
         raise TypeError(f"field {f} has list type without meta data for element types")
     try:
         if strict and not isinstance(v, list):
-            raise TypeError('{} must be {}'.format(f, t))
-        if(type(item_type) == TypeVar):
+            raise TypeError("{} must be {}".format(f, t))
+        if type(item_type) == TypeVar:
             # Type is a custom type so we should just return the value
             return v
         if is_base_cls(item_type):
@@ -155,7 +182,7 @@ def parse_named_tuple_val(f, t, v, strict=False):
     # if type is a Named Tuple then we assume nested and
     # run recursive dict_to_cls
     if strict and not isinstance(v, dict):
-        raise TypeError('{} must be {}'.format(f, t))
+        raise TypeError("{} must be {}".format(f, t))
     return dict_to_cls(v, t, strict) or t()
 
 
@@ -163,7 +190,7 @@ def parse_dataclass_val(f, t, v, strict=False):
     # if type is a Named Tuple then we assume nested and
     # run recursive dict_to_cls
     if strict and not isinstance(v, dict):
-        raise TypeError('{} must be {}'.format(f, t))
+        raise TypeError("{} must be {}".format(f, t))
     if not v:
         # TODO: Check this has no unwanted side effects
         try:
@@ -184,14 +211,24 @@ def parse_dataclass_val(f, t, v, strict=False):
 def parse_enum_val(f, t, v, strict=False):
     """Parse a enum value."""
     if strict and v not in [e.value for e in t]:
-        raise TypeError('{} must be one of {}'.format(f, [e.value for e in t]))
+        raise TypeError("{} must be one of {}".format(f, [e.value for e in t]))
     if not strict and v is None:
         return None
     try:
         return next(e for e in t if e.value == v)
     except StopIteration:
         raise ValueError(
-            f'{v} is not a member of enum {t} for field {f}. Valid values are {[e.value for e in t]}')
+            f"{v} is not a member of enum {t} for field {f}. Valid values are {[e.value for e in t]}"
+        )
+
+
+def get_optional_arg(t):
+    """Makes sure t is not an Optional Union type and returns the type"""
+    if is_union(t):
+        if isinstance(get_args(t)[1], type(None)):
+            # Assume optional
+            return get_args(t)[0]
+    return t
 
 
 def get_parser(t) -> Callable[[str, type, Any, bool], object]:
@@ -216,15 +253,19 @@ def get_parser(t) -> Callable[[str, type, Any, bool], object]:
         Raised if the supplied type has not been implemented
     """
 
-
     if is_base_cls(t):
         return parse_base_val
     if is_iterable(t):
         return parse_list_val
     if is_union(t):
-        if not all(is_base_cls(a) for a in t.__args__):
-            raise ValueError("Invalid Union Type: Can only parse Unions of base classes")
-        return get_parser(t.__args__[0])
+        if isinstance(get_args(t)[1], type(None)) or get_args(t)[1] is type(None):
+            # Assume optional
+            return get_parser(get_args(t)[0])
+        if not all(is_base_cls(get_optional_arg(a)) for a in get_args(t)):
+            raise ValueError(
+                "Invalid Union Type: Can only parse Unions of base classes but got ", t
+            )
+        return get_parser(get_args(t)[0])
     if is_field_class(t):
         return get_parser(t.type)
     if is_dataclass(t):
@@ -236,7 +277,7 @@ def get_parser(t) -> Callable[[str, type, Any, bool], object]:
     if is_named_tuple(t):
         return parse_named_tuple_val
 
-    raise TypeError('{} is invalid type'.format(t))
+    raise TypeError("{} is invalid type".format(t))
 
 
 def dict_to_cls(data: dict, Cls, strict=False):
@@ -244,7 +285,7 @@ def dict_to_cls(data: dict, Cls, strict=False):
     if not isinstance(data, dict):
         if data is None:
             return None
-        raise Exception('Data is invalid {}'.format(type(data)))
+        raise Exception("Data is invalid {}".format(type(data)))
 
     cls_fields = [f for (f, t) in Cls.__annotations__.items() if f in data]
     # if strict ensure that no invalid data fields
@@ -252,14 +293,16 @@ def dict_to_cls(data: dict, Cls, strict=False):
         invalid_data_keys = [k for k in data.keys() if k not in cls_fields]
         if len(invalid_data_keys) > 0:
             first_invalid_key = invalid_data_keys[0]
-            raise Exception('{} must be in {} fields'.format(first_invalid_key, Cls.__name__))
+            raise Exception(
+                "{} must be in {} fields".format(first_invalid_key, Cls.__name__)
+            )
 
     cls_field_types = [t for (f, t) in Cls.__annotations__.items() if f in data]
     data_values = [data[f] for f in cls_fields]
 
     new_data = {}
     # f = field; t = type; v = value
-    for (f, t, v) in zip(cls_fields, cls_field_types, data_values):
+    for f, t, v in zip(cls_fields, cls_field_types, data_values):
         # TODO: If t is string then we need to import the type
 
         is_meta_type = is_field_class(t)
@@ -297,14 +340,14 @@ def get_next_val(last_val, k):
 
 
 def set_list_val(l, k, v):
-    """ functional update list helper"""
+    """functional update list helper"""
     l_new = deepcopy(l)
     l_new[k] = v
     return l_new
 
 
 def set_dict_val(d, k, v):
-    """ functional update dict helper"""
+    """functional update dict helper"""
     d_new = deepcopy(d)
     d_new[k] = v
     return d_new
@@ -313,8 +356,14 @@ def set_dict_val(d, k, v):
 def set_next_val(obj, acc):
     next_val = None
     next_val = set_dict_val(obj, acc[0], acc[1]) if isinstance(obj, dict) else next_val
-    next_val = set_list_val(obj, int(acc[0]), acc[1]) if isinstance(obj, list) else next_val
-    next_val = set_list_val(obj, int(acc[0]), acc[1]) if isinstance(obj, np.ndarray) else next_val
+    next_val = (
+        set_list_val(obj, int(acc[0]), acc[1]) if isinstance(obj, list) else next_val
+    )
+    next_val = (
+        set_list_val(obj, int(acc[0]), acc[1])
+        if isinstance(obj, np.ndarray)
+        else next_val
+    )
     next_val = replace(obj, **dict([acc])) if is_dataclass(obj) else next_val
     next_val = obj._replace(**dict([acc])) if isNamedTuple(obj) else next_val
     if next_val is None:
@@ -322,18 +371,16 @@ def set_next_val(obj, acc):
     return next_val
 
 
-def _replace_recursive(
-        data_tuple: NamedTuple,
-        location: str,
-        value: any) -> NamedTuple:
+def _replace_recursive(data_tuple: NamedTuple, location: str, value: any) -> NamedTuple:
     """replaces a value in a tuple using a dot notation str location"""
-    locations = location.split('.')
+    locations = location.split(".")
 
     def get_val(arr, k):
         last_val = arr[-1][1]
         next_val = get_next_val(last_val, k)
         return arr + [(k, next_val)]
-    tree = reduce(get_val, locations, [('root', data_tuple)])
+
+    tree = reduce(get_val, locations, [("root", data_tuple)])
     tree_new = tree[:-1] + [(locations[-1], value)]
     tree_new_reversed = reversed(tree_new)
     # tree is a key value list where key
@@ -341,6 +388,7 @@ def _replace_recursive(
     def set_vals(acc, leaf):
         # return (leaf[0], leaf[1]._replace(**dict([acc])))
         return (leaf[0], set_next_val(leaf[1], acc))
+
     new_data = reduce(set_vals, tree_new_reversed)
     return new_data[1]
 
@@ -377,6 +425,7 @@ def check_types(obj):
         actual_f_type = getattr(obj, f)
         validate_type = f_type if not is_field_class(f_type) else f_type.type
         if actual_f_type is not None and not isinstance(actual_f_type, validate_type):
-            raise TypeError('{} must be {} but is {}'
-                            .format(f, validate_type, actual_f_type))
+            raise TypeError(
+                "{} must be {} but is {}".format(f, validate_type, actual_f_type)
+            )
     return obj
