@@ -13,7 +13,8 @@ else
     fi
 fi
 bumpversion $1
-python -m build
+# python -m build
+uv build
 twine upload dist/*
 git push
 
