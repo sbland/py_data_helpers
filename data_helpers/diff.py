@@ -13,19 +13,22 @@ def diff(field, a, b) -> List[str]:
         if a is None or b is None:
             changes.append(f"{field}: {a} -> {b}")
         elif is_base_cls(item_type):
-            if item_type == float and isclose(a, b, rel_tol=1e-3):
+            if item_type is float and isclose(a, b, rel_tol=1e-3):
                 pass
             else:
-                changes.append(f'{field}: {a} -> {b}')
+                changes.append(f"{field}: {a} -> {b}")
         elif is_dictionary(item_type):
             changes += diff_dicts(field, a, b)
         elif is_iterable(item_type):
-            changes += flatten_list([diff(f"{field}.{i}", va, vb) for i, (va, vb) in enumerate(zip(a, b))])
+            changes += flatten_list(
+                [diff(f"{field}.{i}", va, vb) for i, (va, vb) in enumerate(zip(a, b))]
+            )
         elif is_dataclass(item_type):
             changes += diff_dicts(field, asdict(a), asdict(b))
         else:
             raise ValueError(f"Invalid type{item_type}")
     return changes
+
 
 def diff_dicts(field, a, b):
     changes = []
@@ -41,5 +44,5 @@ def diff_dicts(field, a, b):
     for k in set(list(a.keys()) + list(b.keys())):
         va = a.get(k, None)
         vb = b.get(k, None)
-        changes += diff(f"{field}.{k}",va, vb)
+        changes += diff(f"{field}.{k}", va, vb)
     return changes

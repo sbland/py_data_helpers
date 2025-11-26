@@ -1,80 +1,83 @@
 """Various functions for generating classes from lower level data structures such as json."""
+
 from dataclasses import asdict, dataclass, field, make_dataclass
 import json
 from enum import Enum
-from typing import Callable, List, Tuple, Union
+from typing import Callable, List, Tuple, Union, Optional, Any
 from data_helpers.encoders import AdvancedJsonEncoder
-
 
 
 @dataclass
 class FieldBase:
-
     variable: str
     label: str
     cls: type
-    desc: str = ''
+    desc: str = ""
     required: bool = False
-    default: Callable[[], any] = None
-    unit: any = None
+    default: Optional[Callable[[], Any]] = None
+    unit: Any = None
 
     def __asdict__(self):
         out = asdict(self)
-        if out.get('default', None):
-            out['default'] = self.default()
+        default_fn = out.get("default", None)
+        if default_fn:
+            out["default"] = default_fn()
         return out
 
 
+    def __lt__(self, other: "FieldBase") -> bool:
+        return sort_fields(self) < sort_fields(other)
+
 @dataclass
 class Group:
-
     variable: str
     label: str
     required: bool
     fields: List[FieldBase]
-    default: Callable[[], any] = None
-    desc: str = ''
+    default: Optional[Callable[[], Any]] = None
+    desc: str = ""
 
     def __asdict__(self):
         out = asdict(self)
-        if out.get('default', None):
-            # TODO: May not be correct default here
-            out['default'] = self.default()
-        out['fields'] = [f.__asdict__() for f in self.fields]
-        out['type'] = 'group'
+        default_fn = out.get("default", None)
+        if default_fn:
+            out["default"] = default_fn()
+        out["fields"] = [f.__asdict__() for f in self.fields]
+        out["type"] = "group"
         return out
 
+
 def group_to_json(group: Group, **kwargs) -> str:
-    return json.dumps(group, cls=AdvancedJsonEncoder , **kwargs)
+    return json.dumps(group, cls=AdvancedJsonEncoder, **kwargs)
 
 
 @dataclass
 class ListBase:
-
     field: Union[FieldBase, Group]
-    default: Callable[[], any] = None
+    default: Optional[Callable[[], Any]] = None
     default_size: int = 0
-
 
     def __asdict__(self):
         out = asdict(self)
-        if out.get('default', None):
-            out['default'] = self.default()
+        default_fn = out.get("default", None)
+        if default_fn:
+            out["default"] = default_fn()
         # TODO: Should we store field type here?
-        out['type'] = "List"
+        out["type"] = "List"
         return out
 
     def __post_init__(self):
         # TODO: Might need to patch dataclass attrs here
 
         # Name the list variable to match the sub object variable.
-        setattr(self, 'variable', self.field.variable)
+        setattr(self, "variable", self.field.variable)
         self.variable = self.field.variable
 
 
 @dataclass
 class Field(FieldBase):
     dependencies: List[str] = field(default_factory=lambda: [])
+
 
 @dataclass
 class NumberField(FieldBase):
@@ -86,36 +89,32 @@ class NumberField(FieldBase):
 
 @dataclass
 class Option:
-
     uid: str
     label: str
-    description: str = ''
+    description: str = ""
     dependencies: List[str] = field(default_factory=lambda: [])  # parameters required by option
 
 
 @dataclass
 class ListField(ListBase):
-
     pass
 
 
 @dataclass
 class ListGroup(ListBase):
-
     pass
 
 
 @dataclass
 class Select(FieldBase):
-
-    options: List[Tuple[str, str]] = field(default_factory=lambda: [])
+    options: List[Option] = field(default_factory=lambda: [])
     required_params: List[str] = field(default_factory=lambda: [])
 
     def __asdict__(self):
         out = asdict(self)
-        if out.get('default', None):
-            # TODO: May not be correct default here
-            out['default'] = self.default()
+        default_fn = out.get("default", None)
+        if default_fn:
+            out["default"] = default_fn()
         return out
 
 
@@ -124,10 +123,10 @@ def generate_enum_from_select(f: Select):
 
 
 def label_to_cls_name(label):
-    return ''.join(map(lambda s: s.capitalize(), label.split(' ')))
+    return "".join(map(lambda s: s.capitalize(), label.split(" ")))
 
 
-def get_field_cls(f: FieldBase, module):
+def get_field_cls(f: Union[FieldBase, Group, ListBase], module):
     subclasses = {}
     if isinstance(f, Group):
         # TODO: Return subclasses
@@ -145,7 +144,7 @@ def get_field_cls(f: FieldBase, module):
 
 def get_field_default(f: FieldBase, Cls):
     def_value = None
-    use_def = getattr(f, 'default', None) is not None or not getattr(f, 'required', False)
+    use_def = getattr(f, "default", None) is not None or not getattr(f, "required", False)
     if isinstance(f, Group):
         pass
     elif isinstance(f, ListField):
@@ -191,7 +190,7 @@ def field_to_dataclass_field(f: Union[FieldBase, ListBase], module):
     """
     if isinstance(f, ListBase):
         Cls, subclasses = get_field_cls(f.field, module)
-        use_def = not getattr(f.field, 'required', False)
+        use_def = not getattr(f.field, "required", False)
         def_value = True, field(default_factory=lambda: []) if use_def else None
         field_name = f.field.variable
         field_out = (field_name, Cls) if not use_def else (field_name, Cls, def_value)
@@ -206,7 +205,7 @@ def field_to_dataclass_field(f: Union[FieldBase, ListBase], module):
         return field_out, classes
 
 
-def sort_fields(f: Field) -> bool:
+def sort_fields(f: Union[Field, FieldBase]) -> bool:
     """Sort dataclass construction fields.
 
     Makes fields with default arg occur after fields without default arg.
@@ -214,13 +213,13 @@ def sort_fields(f: Field) -> bool:
     """
 
     if isinstance(f, ListBase):
-        use_def = not getattr(f.field, 'required', False)
-        return 1 if use_def else 0
-    use_def = getattr(f, 'default', None) is not None or not getattr(f, 'required', False)
-    return 1 if use_def else 0
+        use_def = not getattr(f.field, "required", False)
+        return True if use_def else False
+    use_def = getattr(f, "default", None) is not None or not getattr(f, "required", False)
+    return True if use_def else False
 
 
-def get_val_default(k: FieldBase) -> any:
+def get_val_default(k: FieldBase) -> Any:
     try:
         return k.default() if k.default is not None else None
     except TypeError as e:
@@ -231,7 +230,7 @@ def get_val_default(k: FieldBase) -> any:
 
 
 def create_with_default(group: Group, Cls, subclasses):
-    def inner(input_data: dict = None):
+    def inner(input_data: Optional[dict] = None):
         _input_data = input_data or {}
         args = {}
         for k in group.fields:
@@ -249,7 +248,7 @@ def create_with_default(group: Group, Cls, subclasses):
                     args[k.variable] = k.default() if k.default is not None else []
             elif isinstance(k, ListField):
                 if input_val is not None:
-                    assert type(input_val) == type([]), f"Must provide list for {k.variable}"
+                    assert type(input_val) is type([]), f"Must provide list for {k.variable}"
                     args[k.variable] = input_val
                 else:
                     if k.default_size:
@@ -275,13 +274,13 @@ def create_with_default(group: Group, Cls, subclasses):
                 raise TypeError(f"Default setup not implemented for {type(k)}")
 
         return Cls(**args)
+
     return inner
 
 
-def group_to_class(group: Group, module) -> object:
-    sorted_fields = sorted(group.fields, key=sort_fields)
-    fields_parsed, subclasses = zip(*[field_to_dataclass_field(f, module)
-                                   for f in sorted_fields])
+def group_to_class(group: Group, module) -> Tuple[object, dict]:
+    sorted_fields: List[FieldBase] = sorted(group.fields)
+    fields_parsed, subclasses = zip(*[field_to_dataclass_field(f, module) for f in sorted_fields])
     #    classes is a List[List[Tuple[str, Cls]]]
     subclasses_dict = dict([b for a in subclasses for b in a])
     obj = make_dataclass(label_to_cls_name(group.label), fields_parsed)
@@ -306,83 +305,90 @@ class Struct(object):
 
 
 try:
-    import ipywidgets as widgets
+    import ipywidgets as widgets # type: ignore
 
-    class ConfigGeneratorUI():
-
+    class ConfigGeneratorUI:
         def __init__(self, group: Group) -> None:
             self.group = group
             self.fields = group.fields
             self.field_widgets = {}
             self.field_inputs = {}
 
-            self.input_layout = lambda: widgets.Layout(width='40%')
+            self.input_layout = lambda: widgets.Layout(width="40%")
             self.label_layout = widgets.Layout(
-                width='20%',
+                width="20%",
                 display="flex",
                 justify_content="flex-end",
                 padding="1px",
             )
             self.desc_layout = widgets.Layout(
-                width='40%',
+                width="40%",
                 display="flex wrap",
                 justify_content="flex-start",
             )
             self.field_container_layout = widgets.Layout(
-                display='flex',
-                width='100%',
-                align_items='stretch',
-                flex_flow='horiz',
+                display="flex",
+                width="100%",
+                align_items="stretch",
+                flex_flow="horiz",
                 padding="1px",
             )
 
             self.container_layout = widgets.Layout(
-                display='flex',
-                width='100%',
-                flex_flow='column',
-                align_items='stretch',
+                display="flex",
+                width="100%",
+                flex_flow="column",
+                align_items="stretch",
             )
 
-        def collapsable_container_wrap_layout(self, expanded=True): return widgets.Layout(
-            display='flex',
-            width='100%',
-            border='solid 0.1px grey',
-            flex_flow='column',
-            align_items='stretch',
-            max_height='10000px',
-            height='100%',
-            visibility='visible',
-            padding="10px",
-        ) if expanded else widgets.Layout(
-            display='flex',
-            width='100%',
-            border='solid 0.1px grey',
-            flex_flow='column',
-            align_items='stretch',
-            max_height='0px',
-            visibility='hidden',
-            padding="10px",
-        )
+        def collapsable_container_wrap_layout(self, expanded=True):
+            return (
+                widgets.Layout(
+                    display="flex",
+                    width="100%",
+                    border="solid 0.1px grey",
+                    flex_flow="column",
+                    align_items="stretch",
+                    max_height="10000px",
+                    height="100%",
+                    visibility="visible",
+                    padding="10px",
+                )
+                if expanded
+                else widgets.Layout(
+                    display="flex",
+                    width="100%",
+                    border="solid 0.1px grey",
+                    flex_flow="column",
+                    align_items="stretch",
+                    max_height="0px",
+                    visibility="hidden",
+                    padding="10px",
+                )
+            )
 
         def get_field(self, field: FieldBase):
             if isinstance(field, Select):
                 return widgets.RadioButtons(
                     options=[(opt.label, opt.uid) for opt in field.options],
                     layout=self.input_layout(),
-                    disabled=False
+                    disabled=False,
                 )
             if isinstance(field, NumberField):
-                if field.cls == int:
-                    return widgets.IntSlider(layout=self.input_layout(), min=field.min, max=field.max, step=field.step)
+                if field.cls is int:
+                    return widgets.IntSlider(
+                        layout=self.input_layout(), min=field.min, max=field.max, step=field.step
+                    )
 
-            if field.cls == str:
+            if field.cls is str:
                 return widgets.Text(layout=self.input_layout())
             return widgets.Text(layout=self.input_layout())
 
         def get_field_widget_wrap(self, f, label, description):
             input_field = self.get_field(f)
-            contained = widgets.Box([label, input_field, description],
-                                    layout=self.field_container_layout)
+            contained = widgets.Box(
+                [label, input_field, description], layout=self.field_container_layout
+            )
             return input_field, contained
 
         def get_group_widget(self, f, label, description):
@@ -391,24 +397,28 @@ try:
 
         def get_list_widget(self, f, label, description):
             MAX_LIST_LENGTH = 3
-            def item_layout(): return widgets.Layout(visibility='hidden', max_height='0px')
+
+            def item_layout():
+                return widgets.Layout(visibility="hidden", max_height="0px")
 
             field_widgets, field_inputs = zip(
-                *[self.get_widget_container(f.field) for _ in range(MAX_LIST_LENGTH)])
+                *[self.get_widget_container(f.field) for _ in range(MAX_LIST_LENGTH)]
+            )
 
             field_widgets_wrapped = [widgets.Box([w], layout=item_layout()) for w in field_widgets]
             box_layout = widgets.Layout(
                 # overflow='hidden scroll',
-                border='1px solid green',
-                width='100%',
+                border="1px solid green",
+                width="100%",
                 # max_height='100px', # TODO: This causes squashed inputs
-                flex_flow='column',
-                display='flex',
+                flex_flow="column",
+                display="flex",
                 padding="10px",
             )
 
-            field_count = widgets.IntSlider(value=0, min=0, max=len(
-                field_widgets_wrapped), description="Field count")
+            field_count = widgets.IntSlider(
+                value=0, min=0, max=len(field_widgets_wrapped), description="Field count"
+            )
 
             def limit_inputs_to_slider(sender):
                 for i, inputItem in enumerate(field_widgets_wrapped):
@@ -425,23 +435,24 @@ try:
             list_label = widgets.HTML(f"LIST: {f.field.variable}", layout=self.label_layout)
             list_label.add_class("list_label")
 
-            contained_a = widgets.Box([list_label, field_count, description],
-                                      layout=self.field_container_layout)
+            contained_a = widgets.Box(
+                [list_label, field_count, description], layout=self.field_container_layout
+            )
             contained = widgets.VBox([contained_a, inputs_contained])
             return (field_count, field_inputs), contained
 
         def get_widget_container(self, f):
             is_list = isinstance(f, ListBase)
-            label = widgets.HTML(f.field.label if is_list else f.label,
-                                 layout=self.label_layout)
+            label = widgets.HTML(f.field.label if is_list else f.label, layout=self.label_layout)
             label.add_class("field_label")
             desc = widgets.HTML(f.field.desc if is_list else f.desc, layout=self.desc_layout)
 
             if is_list:
                 input_field, contained = self.get_list_widget(f, label, desc)
             else:
-                get_widget = self.get_group_widget if isinstance(
-                    f, Group) else self.get_field_widget_wrap
+                get_widget = (
+                    self.get_group_widget if isinstance(f, Group) else self.get_field_widget_wrap
+                )
                 input_field, contained = get_widget(f, label, desc)
             return contained, input_field
 
@@ -456,16 +467,22 @@ try:
 
             sections = []
             content = widgets.Box(
-                field_widgets, layout=self.collapsable_container_wrap_layout(False))
+                field_widgets, layout=self.collapsable_container_wrap_layout(False)
+            )
             header_btn = widgets.Button(description=group.label)
             sections.append(widgets.Box([header_btn, content], layout=self.container_layout))
 
             def on_button_clicked(target):
                 def inner(b):
-                    is_visable = target.layout.visibility != 'hidden'
-                    target.layout = self.collapsable_container_wrap_layout(
-                        False) if is_visable else self.collapsable_container_wrap_layout(True)
+                    is_visable = target.layout.visibility != "hidden"
+                    target.layout = (
+                        self.collapsable_container_wrap_layout(False)
+                        if is_visable
+                        else self.collapsable_container_wrap_layout(True)
+                    )
+
                 return inner
+
             header_btn.on_click(on_button_clicked(content))
             container = widgets.VBox(sections, layout=self.field_container_layout)
             return container, field_widgets, field_inputs
@@ -473,7 +490,8 @@ try:
         def generate_widgets(self):
             # TODO: Get layouts from class init
             container, field_widgets, field_inputs = self.get_widget_container_from_group(
-                self.group)
+                self.group
+            )
             self.field_widgets = field_widgets
             self.field_inputs = field_inputs
             return container
@@ -483,20 +501,23 @@ try:
                 return w.value
             if isinstance(f, Group):
                 return {
-                    fi.variable if not isinstance(fi, ListBase) else fi.field.variable:
-                    self.get_field_data(fi, wi[1])
-                    for fi, wi in zip(f.fields, w)}
+                    fi.variable
+                    if not isinstance(fi, ListBase)
+                    else fi.field.variable: self.get_field_data(fi, wi[1])
+                    for fi, wi in zip(f.fields, w)
+                }
             if isinstance(f, ListBase):
                 # TODO: Limit this to range of IntSlider
-                return [self.get_field_data(f.field, wi) for wi in w[1]][0:w[0].value]
-            return 'UNDEFINED'
+                return [self.get_field_data(f.field, wi) for wi in w[1]][0 : w[0].value]
+            return "UNDEFINED"
 
         def get_data_dict(self):
             out = {}
-            for (i, w) in self.field_inputs:
+            for i, w in self.field_inputs:
                 f = self.fields[i]
-                out[f.variable if not isinstance(
-                    f, ListBase) else f.field.variable] = self.get_field_data(f, w)
+                out[f.variable if not isinstance(f, ListBase) else f.field.variable] = (
+                    self.get_field_data(f, w)
+                )
             return out
 
 except ImportError or ModuleNotFoundError:

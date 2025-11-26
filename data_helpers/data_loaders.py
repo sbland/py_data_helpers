@@ -10,9 +10,11 @@ def load_json_to_cls(file_path: Path, cls):
         cls_obj = dict_to_cls(json_data, cls)
         return cls_obj
 
+
 def json_loader(fp):
     with open(fp) as f:
         return json.load(f)
+
 
 def csv_loader(fp):
     with open(fp) as f:
@@ -20,5 +22,5 @@ def csv_loader(fp):
         header = next(spamreader)
         out = []
         for row in spamreader:
-            out.append({k:v for k, v in zip(header, row)})
+            out.append({k: v for k, v in zip(header, row)})
         return out

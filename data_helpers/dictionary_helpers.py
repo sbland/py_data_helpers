@@ -2,7 +2,7 @@ from itertools import zip_longest
 from enum import Enum
 from copy import deepcopy
 from dataclasses import asdict, is_dataclass, replace
-from typing import List
+from typing import List, Union
 
 import numpy as np
 
@@ -11,20 +11,20 @@ from data_helpers.comparisons import BASE_TYPES, is_base_cls, isNamedTuple, is_e
 
 def get_val_from_obj(obj, k):
     if isinstance(obj, dict):
-        return obj[k]   # dictionary access
+        return obj[k]  # dictionary access
     if isinstance(obj, list):
-        return obj[int(k)]   # list access
+        return obj[int(k)]  # list access
     if isinstance(obj, np.ndarray):
-        return obj[int(k)]   # numpy array access
+        return obj[int(k)]  # numpy array access
     if isNamedTuple(obj):
-        return obj._asdict()[k]   # namedtuple access
+        return obj._asdict()[k]  # namedtuple access
     if is_dataclass(obj):
-        return getattr(obj, k)   # dataclass access
-    raise ValueError(f'Cannot get {k} from {obj}')
+        return getattr(obj, k)  # dataclass access
+    raise ValueError(f"Cannot get {k} from {obj}")
 
 
 def get_nested_val(data: dict, location_str: str):
-    """ Helper function to get a value from a dictionary
+    """Helper function to get a value from a dictionary
     when given a dot notation string
 
     e.g.
@@ -56,24 +56,23 @@ def get_nested_val(data: dict, location_str: str):
     assert result == []
     ```
     """
-    loc_split = location_str.split('.')
+    loc_split = location_str.split(".")
     loc_arr = [loc_split[i:] for i in range(0, len(loc_split))]
     out = data
     for i in range(len(loc_arr)):
         k = loc_split[i]
-        if k != '_':
+        if k != "_":
             out = get_val_from_obj(out, k)
-        if k == '_':
+        if k == "_":
             if i == len(loc_arr) - 1:
                 out = out
             else:
-                out = [get_nested_val(o, '.'.join(loc_arr[i + 1])) for o in out]
+                out = [get_nested_val(o, ".".join(loc_arr[i + 1])) for o in out]
             break
     return out
 
 
 class ListMergeMethods(Enum):
-
     REPLACE_ALL = "REPLACE_ALL"
     ZIP = "ZIP"
 
@@ -87,7 +86,7 @@ def merge_objects(a, b, list_method):
         v = b
     elif is_dataclass(a):
         v = merge_dataclasses(a, b, list_method)
-    elif type(a) == type({}):
+    elif type(a) is type({}):
         v = merge_dictionaries(a, b, list_method)
     elif is_iterable(type(a)):
         if len(a) == 0:
@@ -130,8 +129,8 @@ def merge_iterable(a, b, method="REPLACE_ALL"):
 def merge_dataclasses(a, b, list_method=ListMergeMethods.REPLACE_ALL):
     """Deep merge 2 dataclasses. B overrides a"""
     assert is_dataclass(a) and is_dataclass(b)
-    out = replace(a)
-    for k in asdict(b).keys():
+    out = replace(a) # type: ignore
+    for k in asdict(b).keys(): # type: ignore
         v_b = getattr(b, k)
         v_a = getattr(a, k)
         v = merge_objects(v_a, v_b, list_method)
@@ -142,7 +141,7 @@ def merge_dataclasses(a, b, list_method=ListMergeMethods.REPLACE_ALL):
 
 def merge_dictionaries(a, b, list_method=ListMergeMethods.REPLACE_ALL):
     """Deep merge 2 dictionaries. B overrides a"""
-    assert type(a) == type({}) and type(b) == type({})
+    assert type(a) is type({}) and type(b) is type({})
     out = deepcopy(a)
     for k in b.keys():
         v_b = b.get(k)
@@ -153,7 +152,7 @@ def merge_dictionaries(a, b, list_method=ListMergeMethods.REPLACE_ALL):
     return out
 
 
-def find_key(obj: object, k: str, prefix: str = "") -> str:
+def find_key(obj: object, k: str, prefix: str = "") -> Union[str, None]:
     """Find a key in a dictionary and return the full key path
 
     e.g.
@@ -173,7 +172,7 @@ def find_key(obj: object, k: str, prefix: str = "") -> str:
     Will return "bar.foo"
 
     """
-    if type(obj) == type({}):
+    if type(obj) is type({}):
         for kk in obj.keys():
             if kk == k:
                 return prefix + kk
@@ -190,7 +189,7 @@ def find_key(obj: object, k: str, prefix: str = "") -> str:
     return None
 
 
-def find_all_keys(obj: object, k: str, prefix: str = '') -> List[str]:
+def find_all_keys(obj: object, k: str, prefix: str = "") -> List[str]:
     """Find all keys in a dictionary and return the full key paths
 
     e.g.
@@ -211,7 +210,7 @@ def find_all_keys(obj: object, k: str, prefix: str = '') -> List[str]:
 
     """
     keys = []
-    if type(obj) == type({}):
+    if type(obj) is type({}):
         for kk in obj.keys():
             if kk == k:
                 keys.append(prefix + kk)
@@ -224,7 +223,7 @@ def find_all_keys(obj: object, k: str, prefix: str = '') -> List[str]:
     return keys
 
 
-def _flatten_dict_item(k, v, parent_key='', sep='.') -> dict:
+def _flatten_dict_item(k, v, parent_key="", sep=".") -> dict:
     new_key = f"{parent_key}{sep}{k}" if parent_key else k
     out = {}
     if isinstance(v, dict):
@@ -239,7 +238,7 @@ def _flatten_dict_item(k, v, parent_key='', sep='.') -> dict:
     return out
 
 
-def flatten_dict(data: dict, parent_key='', sep='.') -> dict:
+def flatten_dict(data: dict, parent_key="", sep=".") -> dict:
     """Flatten a nested dictionary.
 
     Args:

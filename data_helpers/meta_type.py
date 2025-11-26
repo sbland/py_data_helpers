@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 
+
 def field_type(cls):
     """Define a class as being a field type.
 
@@ -14,9 +15,12 @@ def field_type(cls):
             my_field: FieldType(label="My Field") = None
 
     """
-    assert cls.__annotations__['type'], f'Field type must have a type attribute {cls.__annotations__}'
-    setattr(cls, '__is_field_type__', True)
+    assert cls.__annotations__["type"], (
+        f"Field type must have a type attribute {cls.__annotations__}"
+    )
+    setattr(cls, "__is_field_type__", True)
     return cls
+
 
 @field_type
 @dataclass

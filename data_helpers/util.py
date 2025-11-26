@@ -41,7 +41,7 @@ def PLF_value(points: List[List[float]], x: float) -> float:
             if isclose(abs(ax - bx), 0.0):
                 continue
 
-            if (x <= bx):
+            if x <= bx:
                 y = ay + (by - ay) * ((x - ax) / (bx - ax))
                 break
     return y

@@ -17,7 +17,7 @@ def is_enum(t) -> bool:
 
 
 class AdvancedJsonEncoder(json.JSONEncoder):
-    """ Special json encoder.
+    """Special json encoder.
 
     Usage
     =====
@@ -31,17 +31,17 @@ class AdvancedJsonEncoder(json.JSONEncoder):
 
     def default(self, obj):
         try:
-            if getattr(obj, '__asdict__', None) and type(obj) != type:
+            if getattr(obj, "__asdict__", None) and type(obj) is not type:
                 # If we are parsing a type rather than an instance then we just get str(obj) instead
                 return {**obj.__asdict__(), "_parentcls": type(obj)}
             elif isinstance(obj, list):
-                return ','.join([str(i) for i in obj])
+                return ",".join([str(i) for i in obj])
             elif isinstance(obj, np.integer):
                 return int(obj)
             elif isinstance(obj, np.floating):
                 return float(obj)
-            elif is_dataclass(obj) and type(obj) != type:
-                return asdict(obj)
+            elif is_dataclass(obj) and type(obj) is not type:
+                return asdict(obj) # type: ignore
             elif isinstance(obj, np.ndarray):
                 return obj.tolist()
             elif isinstance(obj, np.bool_):
@@ -52,10 +52,10 @@ class AdvancedJsonEncoder(json.JSONEncoder):
                 # else:
                 #     return obj.tolist()
             elif issubclass(type(obj), Enum):
-                return obj.value
-            elif type(obj) == type:
+                return obj.value # type: ignore
+            elif type(obj) is type:
                 return str(obj)
-            elif type(obj) == type(lambda: None):
+            elif type(obj) is type(lambda: None):
                 # TODO: Implement this correctly
                 if self.parse_functions:
                     return "PLACEHOLDER_FUNC"
@@ -81,9 +81,9 @@ class AdvancedJsonDecoder(json.JSONDecoder):
 
     def object_hook(self, dct):
         if "_parentcls" in dct:
-            cls_str = re.match("<class '(.*)'>", dct['_parentcls']).groups()[0]
-            cls_module = importlib.import_module('.'.join(cls_str.split('.')[:-1]))
-            cls = getattr(cls_module, cls_str.split('.')[-1])
-            del dct['_parentcls']
+            cls_str = re.match("<class '(.*)'>", dct["_parentcls"]).groups()[0] # type: ignore
+            cls_module = importlib.import_module(".".join(cls_str.split(".")[:-1]))
+            cls = getattr(cls_module, cls_str.split(".")[-1])
+            del dct["_parentcls"]
             return cls(**dct)
         return dct
