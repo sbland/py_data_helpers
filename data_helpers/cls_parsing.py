@@ -1,5 +1,6 @@
 import enum
 from warnings import warn
+from inspect import get_annotations
 from dataclasses import asdict, is_dataclass, replace
 from typing import Any, Callable, NamedTuple, List, Union, TypeVar, get_args
 from copy import deepcopy
@@ -11,6 +12,7 @@ from data_helpers.comparisons import (
     is_base_cls,
     is_iterable,
     is_named_tuple,
+    is_optional,
     is_union,
     is_field_class,
 )
@@ -47,12 +49,14 @@ def rgetattr(obj: object, attr: Union[str, List[str]], *args):
     return reduce(_getattr, [obj] + attr_list)
 
 
+
+T = TypeVar('T')
 def rsetattr(
-    obj: object,
+    obj: T,
     attr: Union[str, List[str]],
     val: Any,
     create_missing_dicts: bool = False,
-):
+) -> T:
     """Set nested attributes with dot string path or string list
 
     https://stackoverflow.com/questions/31174295/getattr-and-setattr-on-nested-subobjects-chained-properties
@@ -180,6 +184,10 @@ def parse_named_tuple_val(f, t, v, strict=False):
     # run recursive dict_to_cls
     if strict and not isinstance(v, dict):
         raise TypeError("{} must be {}".format(f, t))
+    if is_optional(t):
+        if v is None:
+            return None
+        t = get_args(t)[0]
     return dict_to_cls(v, t, strict) or t()
 
 
@@ -284,7 +292,8 @@ def dict_to_cls(data: dict, Cls, strict=False):
             return None
         raise Exception("Data is invalid {}".format(type(data)))
 
-    cls_fields = [f for (f, t) in Cls.__annotations__.items() if f in data]
+    cls_fields = [f for (f, t) in get_annotations(Cls).items() if f in data]
+    # cls_fields = [f for (f, t) in Cls.__annotations__.items() if f in data]
     # if strict ensure that no invalid data fields
     if strict:
         invalid_data_keys = [k for k in data.keys() if k not in cls_fields]
@@ -292,7 +301,8 @@ def dict_to_cls(data: dict, Cls, strict=False):
             first_invalid_key = invalid_data_keys[0]
             raise Exception("{} must be in {} fields".format(first_invalid_key, Cls.__name__))
 
-    cls_field_types = [t for (f, t) in Cls.__annotations__.items() if f in data]
+    cls_field_types = [t for (f, t) in get_annotations(Cls).items() if f in data]
+    # cls_field_types = [t for (f, t) in Cls.__annotations__.items() if f in data]
     data_values = [data[f] for f in cls_fields]
 
     new_data = {}
@@ -309,6 +319,11 @@ def dict_to_cls(data: dict, Cls, strict=False):
         d = parser(f, tt, v, strict)
         new_data[f] = d
     try:
+        if is_optional(Cls):
+            if all(value is None for value in new_data.values()):
+                return None
+            else:
+                Cls = get_args(Cls)[0]
         cls_out = Cls(**new_data)
     except TypeError as e:
         if "missing" in str(e):

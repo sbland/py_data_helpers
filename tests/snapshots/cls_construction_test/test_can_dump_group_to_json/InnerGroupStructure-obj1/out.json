@@ -16,5 +16,6 @@
   ],
   "label": "Inner Group",
   "required": true,
+  "type": "group",
   "variable": "inner_group"
 }

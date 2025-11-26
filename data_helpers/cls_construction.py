@@ -28,12 +28,14 @@ class FieldBase:
     def __lt__(self, other: "FieldBase") -> bool:
         return sort_fields(self) < sort_fields(other)
 
+type FieldsClass = Union[FieldBase, "Group", "ListBase"]
+
 @dataclass
 class Group:
     variable: str
     label: str
     required: bool
-    fields: List[FieldBase]
+    fields: List[FieldsClass] = field(default_factory=lambda: [])
     default: Optional[Callable[[], Any]] = None
     desc: str = ""
 
@@ -45,6 +47,9 @@ class Group:
         out["fields"] = [f.__asdict__() for f in self.fields]
         out["type"] = "group"
         return out
+
+    def __lt__(self, other: "FieldBase") -> bool:
+        return sort_fields(self) < sort_fields(other)
 
 
 def group_to_json(group: Group, **kwargs) -> str:
@@ -72,6 +77,9 @@ class ListBase:
         # Name the list variable to match the sub object variable.
         setattr(self, "variable", self.field.variable)
         self.variable = self.field.variable
+
+    def __lt__(self, other: "FieldBase") -> bool:
+        return sort_fields(self) < sort_fields(other)
 
 
 @dataclass
@@ -139,6 +147,9 @@ def get_field_cls(f: Union[FieldBase, Group, ListBase], module):
         Cls = generate_enum_from_select(f)
     else:
         raise ValueError(f"Invalid fieldtype: {type(f)}")
+    if not f.required:
+        Cls = Optional[Cls]
+
     return Cls, subclasses
 
 
@@ -205,7 +216,7 @@ def field_to_dataclass_field(f: Union[FieldBase, ListBase], module):
         return field_out, classes
 
 
-def sort_fields(f: Union[Field, FieldBase]) -> bool:
+def sort_fields(f: Union[Field, FieldBase, Group, ListBase]) -> bool:
     """Sort dataclass construction fields.
 
     Makes fields with default arg occur after fields without default arg.
@@ -278,8 +289,8 @@ def create_with_default(group: Group, Cls, subclasses):
     return inner
 
 
-def group_to_class(group: Group, module) -> Tuple[object, dict]:
-    sorted_fields: List[FieldBase] = sorted(group.fields)
+def group_to_class(group: Group, module) -> Tuple[type, dict]:
+    sorted_fields: List[FieldBase] = sorted(group.fields) # type: ignore
     fields_parsed, subclasses = zip(*[field_to_dataclass_field(f, module) for f in sorted_fields])
     #    classes is a List[List[Tuple[str, Cls]]]
     subclasses_dict = dict([b for a in subclasses for b in a])

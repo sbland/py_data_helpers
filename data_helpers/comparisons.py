@@ -10,10 +10,23 @@ from inspect import isclass
 from enum import Enum
 import numpy as np
 from collections.abc import Sequence as CSequence
-from typing import NamedTuple, List, Sequence, Union, Tuple, Any
+from typing import NamedTuple, List, Sequence, Union, Tuple, Any, get_args
 
 BASE_TYPES = [float, int, str, bool]
 
+
+def is_optional(t) -> bool:
+    if get_origin:
+        if get_origin(t) == Union:
+            args = get_args(t)
+            if len(args) == 2 and type(None) in args:
+                return True
+    else:
+        if t.__args__:
+            args = t.__args__
+            if len(args) == 2 and type(None) in args:
+                return True
+    return False
 
 def is_union(t) -> bool:
     if get_origin:

@@ -9,7 +9,7 @@
       "dependencies": [],
       "desc": "Example field description a",
       "label": "Foo",
-      "required": true,
+      "required": false,
       "unit": null,
       "variable": "foo"
     },
@@ -21,13 +21,13 @@
       "options": [
         {
           "dependencies": [],
-          "description": [],
+          "description": "",
           "label": "A",
           "uid": "a"
         },
         {
           "dependencies": [],
-          "description": [],
+          "description": "",
           "label": "B",
           "uid": "b"
         }
@@ -45,7 +45,7 @@
       "label": "Bar",
       "max": 33,
       "min": 3,
-      "required": true,
+      "required": false,
       "step": 3,
       "unit": null,
       "variable": "bar"
@@ -59,10 +59,11 @@
         "dependencies": [],
         "desc": "Example list",
         "label": "Foos",
-        "required": false,
+        "required": true,
         "unit": null,
         "variable": "foos"
-      }
+      },
+      "type": "List"
     },
     {
       "default": null,
@@ -81,6 +82,7 @@
       ],
       "label": "Main",
       "required": true,
+      "type": "group",
       "variable": "main"
     },
     {
@@ -100,6 +102,7 @@
       ],
       "label": "Other",
       "required": true,
+      "type": "group",
       "variable": "other"
     },
     {
@@ -123,11 +126,13 @@
           ],
           "label": "Inner Group",
           "required": true,
+          "type": "group",
           "variable": "inner_group"
         }
       ],
       "label": "Outer",
       "required": true,
+      "type": "group",
       "variable": "outer"
     },
     {
@@ -143,7 +148,7 @@
             "dependencies": [],
             "desc": "",
             "label": "Inner List Field",
-            "required": false,
+            "required": true,
             "unit": null,
             "variable": "inner_l"
           }
@@ -151,7 +156,8 @@
         "label": "List Group Example",
         "required": true,
         "variable": "list_group"
-      }
+      },
+      "type": "List"
     },
     {
       "default": null,
@@ -178,15 +184,18 @@
             "label": "b",
             "required": true,
             "variable": "b"
-          }
+          },
+          "type": "List"
         }
       ],
       "label": "A",
       "required": true,
+      "type": "group",
       "variable": "a"
     }
   ],
   "label": "Generated Type",
   "required": true,
+  "type": "group",
   "variable": "GeneratedType"
 }

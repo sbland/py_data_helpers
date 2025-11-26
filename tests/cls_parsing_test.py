@@ -1,10 +1,9 @@
 import typing
 import sys
 from enum import Enum
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import NamedTuple, List, Sequence, Tuple, Union, TypeVar
 import pytest
-from data_helpers.meta_type import FieldType
 
 from data_helpers.cls_parsing import (
     dict_to_cls,
@@ -29,12 +28,12 @@ if sys.version_info <= (3, 9):
 class DemoEnum(Enum):
     DEFAULT = "default"
 
-
 @dataclass
 class DemoDataclass:
     foo: int
     bar: str = "hello"
-    number: FieldType("Number Field", int, 1) = 1
+    number: int = 1
+    # number: FieldType("Number Field", int, 1) = 1
 
 
 @dataclass
@@ -65,7 +64,7 @@ PiecewiseFunction = Tuple[List[UX], List[UY]]
 def test_parse_list_val(f, t, v, result, error):
     if error:
         with pytest.raises(error):
-            parse_list_val(f, t, v) == result
+            parse_list_val(f, t, v) == result # type: ignore
     else:
         assert parse_list_val(f, t, v) == result
 
@@ -78,19 +77,19 @@ def test_parse_list_val(f, t, v, result, error):
 def test_parse_dataclass_val(f, t, v, result, error):
     if error:
         with pytest.raises(error):
-            parse_dataclass_val(f, t, v) == result
+            parse_dataclass_val(f, t, v) == result # type: ignore
     else:
         assert parse_dataclass_val(f, t, v) == result
 
 
 def test_dict_to_cls():
     class B(NamedTuple):
-        foo: str = None
+        foo: typing.Optional[str] = None
 
     class A(NamedTuple):
         b: B = B()
-        c: int = None
-        e: int = None
+        c: typing.Optional[int] = None
+        e: typing.Optional[int] = None
 
     d = {
         "b": {
@@ -106,13 +105,13 @@ def test_dict_to_cls():
 def test_dict_to_dataclass():
     @dataclass
     class B:
-        foo: str = None
+        foo: typing.Optional[str] = None
 
     @dataclass
     class A:
-        b: B = B()
-        c: int = None
-        e: int = None
+        b: B = field(default_factory=lambda: B())
+        c: typing.Optional[int] = None
+        e: typing.Optional[int] = None
 
     d = {
         "b": {
@@ -127,11 +126,11 @@ def test_dict_to_dataclass():
 
 def test_dict_to_cls_b():
     class B(NamedTuple):
-        foo: str = None
+        foo: typing.Optional[str] = None
 
     class A(NamedTuple):
-        lat: float = None
-        lon: float = None
+        lat: typing.Optional[float] = None
+        lon: typing.Optional[float] = None
 
     class Wrap(NamedTuple):
         a: A = A()
@@ -153,8 +152,8 @@ def test_dict_to_cls_nested_named_tuple():
         parameters: List[str] = []
 
     class A(NamedTuple):
-        lat: float = None
-        lon: float = None
+        lat: typing.Optional[float] = None
+        lon: typing.Optional[float] = None
 
     class Wrap(NamedTuple):
         a: A = A()
@@ -176,13 +175,13 @@ def test_dict_to_cls_empty():
         parameters: List[str] = []
 
     class A(NamedTuple):
-        lat: float = None
-        lon: float = None
+        lat: typing.Optional[float] = None
+        lon: typing.Optional[float] = None
 
     @dataclass
     class Wrap():
-        a: A = None
-        b: B = None
+        a: typing.Optional[A] = None
+        b: typing.Optional[B] = None
 
     d = {
         "a": {},
@@ -192,7 +191,7 @@ def test_dict_to_cls_empty():
     assert new_object == Wrap(a=A(lat=None, lon=None))
 
 
-def test_dict_to_cls_nested_list_of_lists():
+def test_dict_to_cls_nested_list_of_lists_b():
 
     class Wrap(NamedTuple):
         a: List[List[int]] = [[0]]
@@ -243,8 +242,8 @@ def test_dict_to_cls_list():
         parameters_alt: list[str] = []
 
     class A(NamedTuple):
-        lat: float = None
-        lon: float = None
+        lat: typing.Optional[float] = None
+        lon: typing.Optional[float] = None
 
     class Wrap(NamedTuple):
         a: A = A()
@@ -264,8 +263,8 @@ def test_dict_to_cls_nested_list():
         parameters: List[str] = []
 
     class A(NamedTuple):
-        lat: float = None
-        lon: float = None
+        lat: typing.Optional[float] = None
+        lon: typing.Optional[float] = None
 
     class Wrap(NamedTuple):
         a: A = A()
@@ -313,14 +312,10 @@ def test_dict_to_cls_nested_list_of_lists():
     new_object = dict_to_cls(d, Wrap)
     assert new_object == Wrap(b=B(parameters=[Parameters(foo=Foo(bar=[[1, 2], [3, 4]]))]))
 
-
 def test_dict_to_cls_typevar_class():
-    UX = TypeVar('UX')
-    UY = TypeVar('UY')
-    PiecewiseFunction = Tuple[List[UX], List[UY]]
 
     class Car(NamedTuple):
-        rar: PiecewiseFunction = None
+        rar: typing.Optional[PiecewiseFunction] = None
 
     class Bar(NamedTuple):
         car: Car = Car()
@@ -330,7 +325,7 @@ def test_dict_to_cls_typevar_class():
 
     class Wrap(NamedTuple):
         foo: Foo = Foo()
-        see: PiecewiseFunction = None
+        see: typing.Optional[PiecewiseFunction] = None
 
     data = {
         "see": [[0, -1.0], [73.55, 0.0], [632.53, 1.0], [1471.0, 2.0]],
@@ -345,8 +340,14 @@ def test_dict_to_cls_typevar_class():
         }
     }
 
-    new_object: Wrap = dict_to_cls(data, Wrap)
+    new_object: Wrap = dict_to_cls(data, Wrap) # type: ignore
+    assert new_object.see is not None
+    assert new_object.foo is not None
     assert new_object.see[0] == [0, -1.0]
+    assert new_object.foo.bar is not None
+    assert new_object.foo.bar[0] is not None
+    assert new_object.foo.bar[0].car is not None
+    assert new_object.foo.bar[0].car.rar is not None
     assert new_object.foo.bar[0].car.rar[0] == [0, -1.0]
 
 
@@ -355,8 +356,8 @@ def test_dict_to_cls_nested_list_of_tuple():
         parameters: List[str] = []
 
     class A(NamedTuple):
-        lat: float = None
-        lon: float = None
+        lat: typing.Optional[float] = None
+        lon: typing.Optional[float] = None
 
     class Wrap(NamedTuple):
         a: A = A()
@@ -382,11 +383,11 @@ def test_dict_to_cls_nested_list_of_tuple():
 
 def test_dict_to_cls_invalid():
     class B(NamedTuple):
-        foo: str = None
+        foo: typing.Optional[str] = None
 
     class A(NamedTuple):
-        lat: float = None
-        lon: float = None
+        lat: typing.Optional[float] = None
+        lon: typing.Optional[float] = None
 
     class Wrap(NamedTuple):
         a: A = A()
@@ -435,7 +436,7 @@ class TestGetParser():
         # Should throw error if union types are not similar
 
         class A(NamedTuple):
-            foo: float = None
+            foo: typing.Optional[float] = None
 
         class B(NamedTuple):
             foo: List[str] = []
@@ -472,7 +473,7 @@ def test_replace_recursive():
 
     updated_wrap_b = _replace_recursive(Wrap(), 'a.lat', 5)
     # print(updated_wrap_b)
-    assert updated_wrap_b.a.lat == 5
+    assert updated_wrap_b.a.lat == 5 # type: ignore
 
 
 def test_replace_recursive_with_list():
@@ -489,7 +490,7 @@ def test_replace_recursive_with_list():
         c: int = 4
 
     updated_wrap_b = _replace_recursive(Wrap(), 'b.0.foo', 'world')
-    assert updated_wrap_b.b[0].foo == 'world'
+    assert updated_wrap_b.b[0].foo == 'world' # type: ignore
 
 
 def test_get_nested_args_from_tuple():

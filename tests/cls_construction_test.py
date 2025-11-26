@@ -1,12 +1,13 @@
 from dataclasses import is_dataclass, dataclass, field
 import inspect
-from typing import get_args, List
+from typing import get_args, List, Optional
 from data_helpers.cls_parsing import is_enum, is_iterable
 import json
 import pytest
 from enum import Enum
 from data_helpers.cls_construction import (
     Field,
+    FieldsClass,
     Group,
     group_to_class,
     Option,
@@ -17,6 +18,8 @@ from data_helpers.cls_construction import (
     AdvancedJsonEncoder,
     ConfigGeneratorUI,
 )
+from data_helpers.comparisons import is_optional, is_union
+
 
 
 example_field = Field('name', 'Name', str, 'Name', True, default=lambda: "default_name")
@@ -31,20 +34,20 @@ InnerGroupStructure = Group(
 InnerGroup, subclasses = group_to_class(InnerGroupStructure, globals().get('__name__'))
 
 
-example_fields = [
-    Field('foo', 'Foo', str, 'Example field description a', True),
+example_fields: List[FieldsClass] = [
+    Field('foo', 'Foo', str, 'Example field description a', False),
     Select(
         'sel', 'Sel', str, 'Example field', True,
         default=lambda: 'A',
         options=[
-               Option('a', 'A', []),
-               Option('b', 'B', [])
+               Option('a', 'A', "", []),
+               Option('b', 'B', "", [])
         ]
     ),
 
     NumberField('bar', 'Bar', int, 'Example number field',
-                True, default=lambda: 9, min=3, max=33, step=3),
-    ListField(Field('foos', 'Foos', int, 'Example list', default=lambda: [])),
+                False, default=lambda: 9, min=3, max=33, step=3),
+    ListField(Field('foos', 'Foos', int, 'Example list', True, default=lambda: [])),
     Group('main', 'Main', True, [
         Field('inner', 'Inner', str),
     ]),
@@ -55,7 +58,7 @@ example_fields = [
         InnerGroupStructure
     ]),
     ListGroup(Group('list_group', 'List Group Example', True, [
-        Field('inner_l', 'Inner List Field', str),
+        Field('inner_l', 'Inner List Field', str, "", True),
     ])),
     Group(
         'a',
@@ -83,13 +86,13 @@ class SelEnum(Enum):
 @dataclass
 class MainGroup:
 
-    inner: str
+    inner: Optional[str] = None
 
 
 @dataclass
 class OtherGroup:
 
-    inner_b: str
+    inner_b: Optional[str] = None
 
 
 @dataclass
@@ -100,14 +103,16 @@ class ListGroupExample:
 
 @dataclass
 class GeneratedType:
-    foo: str
+    foo: Optional[str]
     sel: SelEnum
-    bar: int = 9
+    bar: Optional[int] = 9
     foos: List[int] = field(default_factory=lambda: [])
     main: MainGroup = field(default_factory=lambda: MainGroup())
     other: OtherGroup = field(default_factory=lambda: OtherGroup())
     list_group: List[ListGroupExample] = field(default_factory=lambda: [])
 
+class ClassMismatchError(Exception):
+    pass
 
 def check_class_match(cls_a, cls_b, verbose=False) -> bool:
     """Test that the resulting class matches a dataclass type."""
@@ -145,17 +150,33 @@ def check_class_match(cls_a, cls_b, verbose=False) -> bool:
                 elif is_enum(a_cls):
                     assert [a.value for a in a_cls] == [a.value for a in b_cls]
                     assert [a.name for a in a_cls] == [a.name for a in b_cls]
+                elif is_optional(a_cls):
+                    if is_optional(a_cls) and not is_optional(b_cls):
+                        raise AssertionError(
+                            f"Type mismatch: {a_cls} vs {b_cls} for field {k}")
+                    if is_optional(a_cls):
+                        b_args = get_args(b_cls)
+                        assert len(b_args) == 2, f"Optional union args length mismatch {a_cls} vs {b_cls} for field {k}"
+                        assert get_args(b_cls)[1] == type(None)
+
+                elif is_union(a_cls):
+                    # TODO: Check this
+                    a_args = get_args(a_cls)
+                    b_args = get_args(b_cls)
+                    assert len(a_args) == len(b_args), f"Union args length mismatch {a_cls} vs {b_cls} for field {k}"
+                    for i in range(len(a_args)):
+                        assert a_args[i] == b_args[i]
                 else:
-                    print(type(a_cls))
-                    raise ValueError("Invalid type")
-        # TODO: Check enums match
+                    assert a_cls == b_cls, f"Type mismatch: {a_cls} vs {b_cls} for field {k}"
+
 
         # Does not match because import location is different
         # assert expected_members["__doc__"] == out_members["__doc__"]
 
     except AssertionError as e:
         if verbose:
-            raise e
+            print(f"Class mismatch: {e} between {cls_a} and {cls_b}")
+            raise ClassMismatchError(f"Class mismatch: {e} between {cls_a} and {cls_b}") from e
         else:
             return False
     return True
@@ -166,6 +187,22 @@ class TestConstructionClasses:
     def test_can_access_field_base_from_list_field(self):
         pass
 
+#
+class TestConstructDataclassFromDictSimple:
+
+    def test_should_be_able_to_construct_cls_from_fields(self):
+
+        @dataclass
+        class ExpectedType:
+            foo: Optional[str]
+
+        example_group_simple = Group('ExpectedType', 'Expected Type', True, [
+            Field('foo', 'Foo', str, 'Example field description a', False),
+        ])
+        received, subclasses = group_to_class(example_group_simple, globals().get('__name__'))
+        assert type(received) == type(ExpectedType)
+
+        assert check_class_match(ExpectedType, received, True)
 
 class TestConstructDataclassFromDict:
 
@@ -205,7 +242,7 @@ class TestConstructDataclassFromDict:
         foo = "foo"
         sel = SelEnumGenerated.A
 
-        out = OutCls(foo=foo, main=mainGroup, other=otherGroup, sel=sel,
+        out = OutCls(foo=foo, main=mainGroup, other=otherGroup, sel=sel, foos=[1,2,3],
                      outer=outerGroup, list_group=ListGroupExampleGenerated('inner'), a=None)
         assert out.main.inner == "hello"
         assert out.other.inner_b == "World"
@@ -216,7 +253,7 @@ class TestConstructDataclassFromDict:
 
         with pytest.raises(TypeError) as e:
             out = OutCls()
-        assert "TypeError(\"__init__() missing 6 required positional arguments: 'foo', 'main', 'other', 'outer', 'list_group', and 'a'\")" in str(
+        assert "TypeError(\"GeneratedType.__init__() missing 6 required positional arguments: 'foos', 'main', 'other', 'outer', 'list_group', and 'a'\")" in str(
             e)
 
     def test_can_create_with_defaults(self):
@@ -225,7 +262,7 @@ class TestConstructDataclassFromDict:
         out = OutCls._default()
 
     def test_can_create_default_nested_objects(self):
-        _example_fields = [
+        _example_fields: List[FieldsClass] = [
             Group('outer', 'Outer', True, [
                 Group(
                     'inner_group',
@@ -248,15 +285,15 @@ class TestConstructDataclassFromDict:
         assert out.outer.inner_group.name is not None
 
     def test_can_create_default_nested_objects_with_dict(self):
-        _example_fields = [
+        _example_fields: List[FieldsClass] = [
             Group('outer', 'Outer', True, [
                 Group(
                     'inner_group',
                     'Inner Group',
                     True,
                     fields=[
-                        Field('name', 'Name', str, True, default=lambda: ""),
-                        Field('other', 'Other', str, True, default=lambda: "other_default"),
+                        Field('name', 'Name', str, 'Name', True, default=lambda: ""),
+                        Field('other', 'Other', str, 'Other', True, default=lambda: "other_default"),
                     ],
                 )
             ]),
@@ -274,7 +311,7 @@ class TestConstructDataclassFromDict:
 
     def test_can_create_default_nested_list_objects(self):
         default_size = 2
-        _example_fields = [
+        _example_fields: List[FieldsClass] = [
             Group(
                 'a',
                 'A',
@@ -371,8 +408,6 @@ class TestGroupToJson:
     ])
     def test_can_dump_group_to_json(self, snapshot, obj, name):
         kwargs= dict(indent=2, sort_keys=True)
-        # name, obj = value
-        print(name)
-        out = json.dumps(obj, cls=AdvancedJsonEncoder , **kwargs)
+        out = json.dumps(obj, cls=AdvancedJsonEncoder , **kwargs) # type: ignore
         snapshot.assert_match(out, "out.json")
 
