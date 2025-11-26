@@ -94,7 +94,10 @@ def is_named_tuple(t) -> bool:
     return False
 
 
-def is_base_cls(t) -> bool:
+def is_base_cls(t, allowNone=False) -> bool:
+    # Check if t is NoneType
+    if t is type(None) and allowNone:
+        return True
     if t in [int, float, str, bool]:
         return True
     return False

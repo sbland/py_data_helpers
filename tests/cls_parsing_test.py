@@ -2,7 +2,7 @@ import typing
 import sys
 from enum import Enum
 from dataclasses import dataclass, field
-from typing import NamedTuple, List, Sequence, Tuple, Union, TypeVar
+from typing import NamedTuple, List, Optional, Sequence, Tuple, Union, TypeVar
 import pytest
 
 from data_helpers.cls_parsing import (
@@ -453,6 +453,46 @@ class TestGetParser():
         parser = get_parser(t)
         assert parser == parse_list_val
 
+
+class TestParsers:
+
+    class TestEnum:
+
+        def test_parse_enum_val(self):
+            result = parse_enum_val('field', DemoEnum, 'default')
+            assert result == DemoEnum.DEFAULT
+
+        def test_parse_enum_val_invalid(self):
+            with pytest.raises(TypeError):
+                parse_enum_val('field', DemoEnum, 'invalid_value')
+
+        def test_parse_enum_val_invalid_type(self):
+            with pytest.raises(TypeError):
+                parse_enum_val('field', DemoEnum, 123)
+
+        def test_parse_enum_val_invalid_type_2(self):
+            with pytest.raises(TypeError):
+                parse_enum_val('field', DemoEnum, None, True)
+    class TestUnionEnum:
+
+        def test_parse_union_enum_val(self):
+            result = parse_enum_val('field', Union[DemoEnum, DemoEnum], 'default')
+            assert result == DemoEnum.DEFAULT
+
+        def test_parse_union_enum_val_invalid(self):
+            with pytest.raises(TypeError):
+                parse_enum_val('field', Union[DemoEnum, DemoEnum], 'invalid_value')
+
+    class TestOptional:
+        def test_optional_with_value(self):
+            parser = get_parser(Optional[int])
+            result = parser('field', Optional[int], 1, False)
+            assert result == 1
+
+        def test_optional_without_value(self):
+            parser = get_parser(Optional[int])
+            result = parser('field', Optional[int], None, False)
+            assert result is None
 
 def test_replace_recursive():
     class B(NamedTuple):

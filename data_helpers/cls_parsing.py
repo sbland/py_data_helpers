@@ -222,21 +222,41 @@ def parse_enum_val(f, t, v, strict=False):
     try:
         return next(e for e in t if e.value == v)
     except StopIteration:
-        raise ValueError(
+        raise TypeError(
             f"{v} is not a member of enum {t} for field {f}. Valid values are {[e.value for e in t]}"
         )
 
 
 def get_optional_arg(t):
     """Makes sure t is not an Optional Union type and returns the type"""
-    if is_union(t):
-        if isinstance(get_args(t)[1], type(None)):
-            # Assume optional
-            return get_args(t)[0]
+    if is_optional(t):
+        return get_args(t)[0]
     return t
 
 
-def get_parser(t) -> Callable[[str, type, Any, bool], object]:
+def get_parser_for_optional(t) -> Callable[[str, type|Union[Any,None], Any, bool], object]:
+    """Get the function that can parse the supplied Optional type.
+
+    Python 3.9 introduced breaking changes for type checking.
+    We use get_origin if available(3.9+) else check with type(t)
+
+    Parameters
+    ----------
+    t : type
+        The type to be checked. E.g. int, str, list
+
+    Returns
+    -------
+    function
+    """
+    parser = get_parser(get_optional_arg(t))
+    def wrapped_parser(f, tt, v, strict=False):
+        if v is None:
+            return None
+        return parser(f, get_optional_arg(t), v, strict)
+    return wrapped_parser
+
+def get_parser(t) -> Callable[[str, type|Union[Any,None], Any, bool], object]:
     """Get the function that can parse the supplied type.
 
     Python 3.9 introduced breaking changes for type checking.
@@ -262,13 +282,15 @@ def get_parser(t) -> Callable[[str, type, Any, bool], object]:
         return parse_base_val
     if is_iterable(t):
         return parse_list_val
+    if is_optional(t):
+        return get_parser_for_optional(t)
     if is_union(t):
         if isinstance(get_args(t)[1], type(None)) or get_args(t)[1] is type(None):
             # Assume optional
             return get_parser(get_args(t)[0])
-        if not all(is_base_cls(get_optional_arg(a)) for a in get_args(t)):
+        if not all(is_base_cls(get_optional_arg(a), True) for a in get_args(t)):
             raise ValueError(
-                "Invalid Union Type: Can only parse Unions of base classes but got ", t
+                "Invalid Union Type: Can only parse Unions of base classes but got ", get_args(t)
             )
         return get_parser(get_args(t)[0])
     if is_field_class(t):
@@ -315,7 +337,11 @@ def dict_to_cls(data: dict, Cls, strict=False):
         if is_meta_type:
             tt = t.type
 
-        parser = get_parser(t)
+        try:
+            parser = get_parser(t)
+        except Exception as e:
+            print(f"Error getting parser for field {f} of type {t} in class {Cls.__name__}")
+            raise e
         d = parser(f, tt, v, strict)
         new_data[f] = d
     try:
