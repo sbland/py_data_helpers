@@ -473,6 +473,7 @@ class TestParsers:
         def test_parse_enum_val_invalid_type_2(self):
             with pytest.raises(TypeError):
                 parse_enum_val('field', DemoEnum, None, True)
+
     class TestUnionEnum:
 
         def test_parse_union_enum_val(self):
@@ -484,6 +485,7 @@ class TestParsers:
                 parse_enum_val('field', Union[DemoEnum, DemoEnum], 'invalid_value')
 
     class TestOptional:
+
         def test_optional_with_value(self):
             parser = get_parser(Optional[int])
             result = parser('field', Optional[int], 1, False)
@@ -495,6 +497,7 @@ class TestParsers:
             assert result is None
 
 def test_replace_recursive():
+
     class B(NamedTuple):
         foo: str = 'hello'
 
@@ -507,12 +510,7 @@ def test_replace_recursive():
         b: B = B()
         c: int = 4
 
-    # updated_wrap = _replace_recursive(Wrap(), 'c', 5)
-    # # print(updated_wrap)
-    # assert updated_wrap.c == 5
-
     updated_wrap_b = _replace_recursive(Wrap(), 'a.lat', 5)
-    # print(updated_wrap_b)
     assert updated_wrap_b.a.lat == 5 # type: ignore
 
 
@@ -552,6 +550,7 @@ def test_get_nested_args_from_tuple():
 
 
 class TestRGetAttr:
+
     def test_can_get_nested_value(self):
         obj = {
             "foo": {
@@ -599,8 +598,6 @@ class TestRsetattr:
 
 
 class TestCheckTypes:
-
-
 
     def test_can_check_some_data(self):
         config_data = {
