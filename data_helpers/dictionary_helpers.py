@@ -97,7 +97,7 @@ def merge_objects(a, b, list_method):
             v = merge_iterable(a, b, method=list_method)
     else:
         print(type(a))
-        raise ValueError("Invalid type")
+        raise ValueError(f"Invalid type: {type(a)}")
     return v
 
 
@@ -129,8 +129,8 @@ def merge_iterable(a, b, method="REPLACE_ALL"):
 def merge_dataclasses(a, b, list_method=ListMergeMethods.REPLACE_ALL):
     """Deep merge 2 dataclasses. B overrides a"""
     assert is_dataclass(a) and is_dataclass(b)
-    out = replace(a) # type: ignore
-    for k in asdict(b).keys(): # type: ignore
+    out = replace(a)  # type: ignore
+    for k in asdict(b).keys():  # type: ignore
         v_b = getattr(b, k)
         v_a = getattr(a, k)
         v = merge_objects(v_a, v_b, list_method)

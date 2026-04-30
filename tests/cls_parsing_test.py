@@ -1,5 +1,6 @@
 import typing
 import sys
+import numpy as np
 from enum import Enum
 from dataclasses import dataclass, field
 from typing import NamedTuple, List, Optional, Sequence, Tuple, Union, TypeVar
@@ -43,11 +44,27 @@ class DemoDataclassSimple:
 
 @pytest.mark.parametrize(['f', 't', 'v', 'result'], [
     ('field', type(1), 1, 1),
+    ('field', type(1.0), "1.0", 1.0),
+    ('field', type(1.0), 1.0, 1.0),
+    ('field', type(np.float32(1.0)), 1.0, np.float32(1.0)),
     ('field', type("a"), "a", "a"),
     ('field', type(True), True, True),
 ])
 def test_parse_base_val(f, t, v, result):
-    assert parse_base_val(f, t, v) == result
+    out = parse_base_val(f, t, v)
+    assert out == result
+    assert type(result) == t
+    assert type(out) == t
+
+
+
+@pytest.mark.parametrize(['f', 't', 'v'], [
+    ('field', type(1), "Hello World"),
+    ('field', type(1.0), "Hello World"),
+])
+def test_parse_base_val_fail(f, t, v):
+    with pytest.raises(TypeError):
+        parse_base_val(f, t, v, strict=True)
 
 
 UX = TypeVar('UX')

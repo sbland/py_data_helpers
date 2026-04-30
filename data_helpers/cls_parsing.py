@@ -49,8 +49,9 @@ def rgetattr(obj: object, attr: Union[str, List[str]], *args):
     return reduce(_getattr, [obj] + attr_list)
 
 
+T = TypeVar("T")
 
-T = TypeVar('T')
+
 def rsetattr(
     obj: T,
     attr: Union[str, List[str]],
@@ -141,9 +142,23 @@ def rdelattr(obj: object, attr: Union[str, List[str]]):
 
 def parse_base_val(f, t, v, strict=False):
     # Check types
-    if strict and not isinstance(v, t):
-        raise TypeError("{} must be {}".format(f, t))
-    return v
+    if v is None:
+        return None
+    if is_union(t):
+        return v
+    try:
+        out = t(v)
+        return out
+    except TypeError as e:
+        if strict:
+            raise TypeError(f"Failed to create {t} from {v} for field: {f}") from e
+        else:
+            return v
+    except ValueError as e:
+        if strict:
+            raise TypeError(f"Failed to create {t} from {v} for field: {f}") from e
+        else:
+            return v
 
 
 def parse_list_val(f, t, v, strict=False):
@@ -170,7 +185,7 @@ def parse_list_val(f, t, v, strict=False):
             return [fn(f, item_type.type, vi, strict) for vi in v]
             # TODO: Handle field class
         if is_dataclass(item_type):
-            return [dict_to_cls(vi, item_type, strict) or item_type() for vi in v] # type: ignore
+            return [dict_to_cls(vi, item_type, strict) or item_type() for vi in v]  # type: ignore
         if is_named_tuple(item_type):
             return [dict_to_cls(vi, item_type, strict) or item_type() for vi in v]
     except AttributeError as e:
@@ -234,7 +249,7 @@ def get_optional_arg(t):
     return t
 
 
-def get_parser_for_optional(t) -> Callable[[str, type|Union[Any,None], Any, bool], object]:
+def get_parser_for_optional(t) -> Callable[[str, type | Union[Any, None], Any, bool], object]:
     """Get the function that can parse the supplied Optional type.
 
     Python 3.9 introduced breaking changes for type checking.
@@ -250,13 +265,16 @@ def get_parser_for_optional(t) -> Callable[[str, type|Union[Any,None], Any, bool
     function
     """
     parser = get_parser(get_optional_arg(t))
+
     def wrapped_parser(f, tt, v, strict=False):
         if v is None:
             return None
         return parser(f, get_optional_arg(t), v, strict)
+
     return wrapped_parser
 
-def get_parser(t) -> Callable[[str, type|Union[Any,None], Any, bool], object]:
+
+def get_parser(t) -> Callable[[str, type | Union[Any, None], Any, bool], object]:
     """Get the function that can parse the supplied type.
 
     Python 3.9 introduced breaking changes for type checking.
@@ -371,7 +389,7 @@ def get_next_val(last_val, k):
     next_val = last_val[int(k)] if isinstance(last_val, list) else next_val
     next_val = last_val[int(k)] if isinstance(last_val, np.ndarray) else next_val
     next_val = getattr(last_val, k) if is_dataclass(last_val) else next_val
-    next_val = last_val._asdict()[k] if isNamedTuple(last_val) else next_val # type: ignore
+    next_val = last_val._asdict()[k] if isNamedTuple(last_val) else next_val  # type: ignore
     return next_val
 
 
@@ -394,8 +412,8 @@ def set_next_val(obj, acc):
     next_val = set_dict_val(obj, acc[0], acc[1]) if isinstance(obj, dict) else next_val
     next_val = set_list_val(obj, int(acc[0]), acc[1]) if isinstance(obj, list) else next_val
     next_val = set_list_val(obj, int(acc[0]), acc[1]) if isinstance(obj, np.ndarray) else next_val
-    next_val = replace(obj, **dict([acc])) if is_dataclass(obj) else next_val # type: ignore
-    next_val = obj._replace(**dict([acc])) if isNamedTuple(obj) else next_val # type: ignore
+    next_val = replace(obj, **dict([acc])) if is_dataclass(obj) else next_val  # type: ignore
+    next_val = obj._replace(**dict([acc])) if isNamedTuple(obj) else next_val  # type: ignore
     if next_val is None:
         raise ValueError()
     return next_val
@@ -420,7 +438,7 @@ def _replace_recursive(data_tuple: NamedTuple, location: str, value: Any) -> Nam
         return (leaf[0], set_next_val(leaf[1], acc))
 
     new_data = reduce(set_vals, tree_new_reversed)
-    return new_data[1] # type: ignore
+    return new_data[1]  # type: ignore
 
 
 def get_val_from_tuple(data_tuple: NamedTuple, location: str):
@@ -440,7 +458,7 @@ def unpack(obj):
     elif isinstance(obj, tuple):
         return tuple(unpack(value) for value in obj)
     elif is_dataclass(obj):
-        return unpack(asdict(obj)) # type: ignore
+        return unpack(asdict(obj))  # type: ignore
     elif isinstance(obj, np.ndarray):
         return unpack(obj.tolist())
     elif issubclass(type(obj), enum.Enum):

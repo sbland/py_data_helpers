@@ -12,7 +12,7 @@ import numpy as np
 from collections.abc import Sequence as CSequence
 from typing import NamedTuple, List, Sequence, Union, Tuple, Any, get_args
 
-BASE_TYPES = [float, int, str, bool]
+BASE_TYPES = [float, int, str, bool, np.float32, np.float64, np.int32, np.int64]
 
 
 def is_optional(t) -> bool:
@@ -27,6 +27,7 @@ def is_optional(t) -> bool:
             if len(args) == 2 and type(None) in args:
                 return True
     return False
+
 
 def is_union(t) -> bool:
     if get_origin:
@@ -161,7 +162,7 @@ def are_equal_safe(val_a: Any, val_b: Any):
             break
         if are_same_type and isinstance(val_a, tuple) and type_of_val is not tuple:
             # Assume to be NamedTuple
-            are_equal = tuples_are_equal(val_a, val_b) # type: ignore
+            are_equal = tuples_are_equal(val_a, val_b)  # type: ignore
             break
 
         if are_equal is None:
