@@ -155,4 +155,3 @@ class TestIsEnum:
     ])
     def test_is_enum(self, value, result):
         assert is_enum(value) == result
-
