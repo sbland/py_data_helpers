@@ -4,7 +4,7 @@ import json
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, field, make_dataclass
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from data_helpers.encoders import AdvancedJsonEncoder
 
@@ -26,11 +26,12 @@ class FieldBase:
             out["default"] = default_fn()
         return out
 
-
     def __lt__(self, other: "FieldBase") -> bool:
         return sort_fields(self) < sort_fields(other)
 
-type FieldsClass = FieldBase | "Group" | "ListBase"
+
+type FieldsClass = "FieldBase | Group | ListBase"
+
 
 @dataclass
 class Group:
@@ -129,11 +130,11 @@ class Select(FieldBase):
 
 
 def generate_enum_from_select(f: Select):
-    return Enum(f"{f.variable.capitalize()}Enum", dict([(opt.label, opt.uid) for opt in f.options]))
+    return Enum(f"{f.variable.capitalize()}Enum", {opt.label: opt.uid for opt in f.options})
 
 
 def label_to_cls_name(label):
-    return "".join(map(lambda s: s.capitalize(), label.split(" ")))
+    return "".join(s.capitalize() for s in label.split(" "))
 
 
 def get_field_cls(f: FieldBase | Group | ListBase, module):
@@ -141,14 +142,14 @@ def get_field_cls(f: FieldBase | Group | ListBase, module):
     if isinstance(f, Group):
         # TODO: Return subclasses
         Cls, subclasses = group_to_class(f, module)
-    elif isinstance(f, Field) or isinstance(f, NumberField):
+    elif isinstance(f, (Field, NumberField)):
         Cls = f.cls
     elif isinstance(f, Select):
         Cls = generate_enum_from_select(f)
     else:
-        raise ValueError(f"Invalid fieldtype: {type(f)}")
+        raise TypeError(f"Invalid fieldtype: {type(f)}")
     if not f.required:
-        Cls = Optional[Cls]
+        Cls = Cls | None
 
     return Cls, subclasses
 
@@ -180,7 +181,7 @@ def get_field_default(f: FieldBase, Cls):
         if f.default is not None:
             def_value = field(default=Cls[f.default()])
     else:
-        raise ValueError(f"Invalid fieldtype: {type(f)}")
+        raise TypeError(f"Invalid fieldtype: {type(f)}")
     return use_def, def_value
 
 
@@ -225,9 +226,9 @@ def sort_fields(f: Field | FieldBase | Group | ListBase) -> bool:
 
     if isinstance(f, ListBase):
         use_def = not getattr(f.field, "required", False)
-        return True if use_def else False
+        return bool(use_def)
     use_def = getattr(f, "default", None) is not None or not getattr(f, "required", False)
-    return True if use_def else False
+    return bool(use_def)
 
 
 def get_val_default(k: FieldBase) -> Any:
@@ -237,7 +238,7 @@ def get_val_default(k: FieldBase) -> Any:
         if "object is not callable" in str(e):
             raise TypeError(f"Default value for {k.label or k.variable} must be a function")
         else:
-            raise e
+            raise
 
 
 def create_with_default(group: Group, Cls, subclasses):
@@ -290,7 +291,7 @@ def create_with_default(group: Group, Cls, subclasses):
 
 
 def group_to_class(group: Group, module) -> tuple[type, dict]:
-    sorted_fields: list[FieldBase] = sorted(group.fields) # type: ignore
+    sorted_fields: list[FieldBase] = sorted(group.fields)  # type: ignore
     fields_parsed, subclasses = zip(*[field_to_dataclass_field(f, module) for f in sorted_fields])
     #    classes is a List[List[Tuple[str, Cls]]]
     subclasses_dict = dict([b for a in subclasses for b in a])
@@ -385,11 +386,10 @@ try:
                     layout=self.input_layout(),
                     disabled=False,
                 )
-            if isinstance(field, NumberField):
-                if field.cls is int:
-                    return widgets.IntSlider(
-                        layout=self.input_layout(), min=field.min, max=field.max, step=field.step
-                    )
+            if isinstance(field, NumberField) and field.cls is int:
+                return widgets.IntSlider(
+                    layout=self.input_layout(), min=field.min, max=field.max, step=field.step
+                )
 
             if field.cls is str:
                 return widgets.Text(layout=self.input_layout())
@@ -403,7 +403,7 @@ try:
             return input_field, contained
 
         def get_group_widget(self, f, label, description):
-            input_field, field_widgets, field_inputs = self.get_widget_container_from_group(f)
+            input_field, _field_widgets, field_inputs = self.get_widget_container_from_group(f)
             return field_inputs, input_field
 
         def get_list_widget(self, f, label, description):
@@ -531,5 +531,5 @@ try:
                 )
             return out
 
-except ImportError or ModuleNotFoundError:
+except ImportError:
     pass

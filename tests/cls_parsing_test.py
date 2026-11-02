@@ -436,6 +436,17 @@ def test_dict_to_cls_invalid():
         dict_to_cls(d3, Wrap, strict=True)
 
 
+def test_dict_to_cls_invalid_input_errors():
+    class A(NamedTuple):
+        foo: int = 0
+
+    with pytest.raises(TypeError, match="Data is invalid"):
+        dict_to_cls([], A)
+
+    with pytest.raises(ValueError, match="bar must be in A fields"):
+        dict_to_cls({"bar": 1}, A, strict=True)
+
+
 class TestGetParser():
 
     def test_get_parser_Union(self):

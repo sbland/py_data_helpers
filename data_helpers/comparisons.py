@@ -76,15 +76,11 @@ def is_iterable(t) -> bool:
         if t == CSequence:
             return True
 
-    if t == np.ndarray:
-        return True
-    return False
+    return t == np.ndarray
 
 
 def is_enum(t) -> bool:
-    if isclass(t) and issubclass(t, Enum):
-        return True
-    return False
+    return bool(isclass(t) and issubclass(t, Enum))
 
 
 def is_named_tuple(t) -> bool:
@@ -101,15 +97,11 @@ def is_base_cls(t, allowNone=False) -> bool:
     # Check if t is NoneType
     if t is type(None) and allowNone:
         return True
-    if t in [int, float, str, bool]:
-        return True
-    return False
+    return t in [int, float, str, bool]
 
 
 def is_field_class(t) -> bool:
-    if hasattr(t, "__is_field_type__"):
-        return True
-    return False
+    return bool(hasattr(t, "__is_field_type__"))
 
 
 def is_dictionary(t) -> bool:
@@ -185,10 +177,8 @@ def compare_named_tuples(tuple_a: NamedTuple, tuple_b: NamedTuple):
 
 def tuples_are_equal(tuple_a: NamedTuple, tuple_b: NamedTuple):
     return all(
-        [
-            are_equal_safe(a[1], b[1])
-            for a, b in zip(tuple_a._asdict().items(), tuple_b._asdict().items())
-        ]
+        are_equal_safe(a[1], b[1])
+        for a, b in zip(tuple_a._asdict().items(), tuple_b._asdict().items())
     )
 
 

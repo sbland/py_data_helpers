@@ -10,9 +10,7 @@ import numpy as np
 
 
 def is_enum(t) -> bool:
-    if issubclass(t, Enum):
-        return True
-    return False
+    return bool(issubclass(t, Enum))
 
 
 class AdvancedJsonEncoder(json.JSONEncoder):
@@ -40,7 +38,7 @@ class AdvancedJsonEncoder(json.JSONEncoder):
             elif isinstance(obj, np.floating):
                 return float(obj)
             elif is_dataclass(obj) and type(obj) is not type:
-                return asdict(obj) # type: ignore
+                return asdict(obj)  # type: ignore
             elif isinstance(obj, np.ndarray):
                 return obj.tolist()
             elif isinstance(obj, np.bool_):
@@ -51,7 +49,7 @@ class AdvancedJsonEncoder(json.JSONEncoder):
                 # else:
                 #     return obj.tolist()
             elif issubclass(type(obj), Enum):
-                return obj.value # type: ignore
+                return obj.value  # type: ignore
             elif type(obj) is type:
                 return str(obj)
             elif type(obj) is type(lambda: None):
@@ -64,9 +62,9 @@ class AdvancedJsonEncoder(json.JSONEncoder):
             elif isinstance(obj, timedelta):
                 return obj.total_seconds()
             return json.JSONEncoder.default(self, obj)
-        except Exception as e:
+        except Exception:
             if self.throw_errors:
-                raise e
+                raise
             else:
                 warnings.warn(f"Failed to parse object: {obj}")
                 return "FAILED_TO_PARSE"
@@ -76,11 +74,11 @@ class AdvancedJsonDecoder(json.JSONDecoder):
     """Special json decoder."""
 
     def __init__(self, *args, **kwargs):
-        json.JSONDecoder.__init__(self, object_hook=self.object_hook, *args, **kwargs)
+        json.JSONDecoder.__init__(self, *args, object_hook=self.object_hook, **kwargs)
 
     def object_hook(self, dct):
         if "_parentcls" in dct:
-            cls_str = re.match("<class '(.*)'>", dct["_parentcls"]).groups()[0] # type: ignore
+            cls_str = re.match("<class '(.*)'>", dct["_parentcls"]).groups()[0]  # type: ignore
             cls_module = importlib.import_module(".".join(cls_str.split(".")[:-1]))
             cls = getattr(cls_module, cls_str.split(".")[-1])
             del dct["_parentcls"]

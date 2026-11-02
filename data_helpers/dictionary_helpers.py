@@ -63,9 +63,7 @@ def get_nested_val(data: dict, location_str: str):
         if k != "_":
             out = get_val_from_obj(out, k)
         if k == "_":
-            if i == len(loc_arr) - 1:
-                out = out
-            else:
+            if i != len(loc_arr) - 1:
                 out = [get_nested_val(o, ".".join(loc_arr[i + 1])) for o in out]
             break
     return out
@@ -129,7 +127,7 @@ def merge_dataclasses(a, b, list_method=ListMergeMethods.REPLACE_ALL):
     """Deep merge 2 dataclasses. B overrides a"""
     assert is_dataclass(a) and is_dataclass(b)
     out = replace(a)  # type: ignore
-    for k in asdict(b).keys():  # type: ignore
+    for k in asdict(b):  # type: ignore
         v_b = getattr(b, k)
         v_a = getattr(a, k)
         v = merge_objects(v_a, v_b, list_method)
@@ -142,7 +140,7 @@ def merge_dictionaries(a, b, list_method=ListMergeMethods.REPLACE_ALL):
     """Deep merge 2 dictionaries. B overrides a"""
     assert type(a) is type({}) and type(b) is type({})
     out = deepcopy(a)
-    for k in b.keys():
+    for k in b:
         v_b = b.get(k)
         v_a = a.get(k)
         v = merge_objects(v_a, v_b, list_method)
@@ -172,7 +170,7 @@ def find_key(obj: object, k: str, prefix: str = "") -> str | None:
 
     """
     if type(obj) is type({}):
-        for kk in obj.keys():
+        for kk in obj:
             if kk == k:
                 return prefix + kk
             else:
@@ -210,7 +208,7 @@ def find_all_keys(obj: object, k: str, prefix: str = "") -> list[str]:
     """
     keys = []
     if type(obj) is type({}):
-        for kk in obj.keys():
+        for kk in obj:
             if kk == k:
                 keys.append(prefix + kk)
             else:

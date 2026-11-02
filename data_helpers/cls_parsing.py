@@ -54,7 +54,7 @@ def rgetattr(obj: object, attr: str | list[str], *args):
 T = TypeVar("T")
 
 
-def rsetattr(
+def rsetattr[T](
     obj: T,
     attr: str | list[str],
     val: Any,
@@ -86,14 +86,14 @@ def rsetattr(
         target = rgetattr(obj_copy, pre) if pre else obj_copy
         if target is None:
             raise AttributeError(f"{pre} not found")
-    except AttributeError as e:
+    except AttributeError:
         if create_missing_dicts:
             new_dict = {} if not post.isnumeric() else []
             rsetattr(obj, pre, new_dict, True)
             target = rgetattr(obj_copy, pre) if pre else obj_copy
         else:
             print(f"Missing attribute for {pre}")
-            raise e
+            raise
     if isinstance(target, list):
         index = int(post)
         if len(target) - 1 < index:
@@ -190,9 +190,9 @@ def parse_list_val(f, t, v, strict=False):
             return [dict_to_cls(vi, item_type, strict) or item_type() for vi in v]  # type: ignore
         if is_named_tuple(item_type):
             return [dict_to_cls(vi, item_type, strict) or item_type() for vi in v]
-    except AttributeError as e:
+    except AttributeError:
         warn(f"Invalid type: {t}, {f}: {v}")
-        raise e
+        raise
     return None
 
 
@@ -225,7 +225,7 @@ def parse_dataclass_val(f, t, v, strict=False):
                 # Class is not callable
                 return None
             else:
-                raise e
+                raise
         return None
     return dict_to_cls(v, t, strict) or t()
 
@@ -332,7 +332,7 @@ def dict_to_cls(data: dict, Cls, strict=False):
     if not isinstance(data, dict):
         if data is None:
             return None
-        raise Exception(f"Data is invalid {type(data)}")
+        raise TypeError(f"Data is invalid {type(data)}")
 
     cls_fields = [f for (f, t) in get_annotations(Cls).items() if f in data]
     # cls_fields = [f for (f, t) in Cls.__annotations__.items() if f in data]
@@ -341,7 +341,7 @@ def dict_to_cls(data: dict, Cls, strict=False):
         invalid_data_keys = [k for k in data if k not in cls_fields]
         if len(invalid_data_keys) > 0:
             first_invalid_key = invalid_data_keys[0]
-            raise Exception(f"{first_invalid_key} must be in {Cls.__name__} fields")
+            raise ValueError(f"{first_invalid_key} must be in {Cls.__name__} fields")
 
     cls_field_types = [t for (f, t) in get_annotations(Cls).items() if f in data]
     # cls_field_types = [t for (f, t) in Cls.__annotations__.items() if f in data]
@@ -359,9 +359,9 @@ def dict_to_cls(data: dict, Cls, strict=False):
 
         try:
             parser = get_parser(t)
-        except Exception as e:
+        except Exception:
             print(f"Error getting parser for field {f} of type {t} in class {Cls.__name__}")
-            raise e
+            raise
         d = parser(f, tt, v, strict)
         new_data[f] = d
     try:
@@ -375,13 +375,13 @@ def dict_to_cls(data: dict, Cls, strict=False):
         if "missing" in str(e):
             # We are missing required inputs to this class
             print("Missing required inputs to class", Cls.__name__)
-            raise e
+            raise
         if "object is not callable" in str(e):
             # Class is not callable
             print("Class is not callable", Cls)
-            raise e
+            raise
         else:
-            raise e
+            raise
     return cls_out
 
 

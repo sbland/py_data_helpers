@@ -17,69 +17,71 @@ default_class_meta = {
 
 def parse_objects(obj: Any, current_key: str | None = None, strict: bool = True):
     if type(obj) is type and obj in default_class_meta:
-        return dict(__meta__=dict(id=current_key, label=current_key, type=default_class_meta[obj]))
+        return {
+            "__meta__": {"id": current_key, "label": current_key, "type": default_class_meta[obj]}
+        }
     elif is_dataclass(obj) and type(obj) is not type:
         if is_field_class(obj):
             # If the dataclass has a type attribute we should parse
             # it without using the default parser
-            obj_dict = asdict(obj) # type: ignore
+            obj_dict = asdict(obj)  # type: ignore
             type_val = obj_dict.get("type", None)
             if type_val is None:
                 raise ValueError(f"Cannot parse type: {obj} has type {type(obj)}")
             subType = parse_objects(type_val, current_key=current_key, strict=strict)
-            subType["__meta__"] = { # type: ignore
+            subType["__meta__"] = {  # type: ignore
                 **obj_dict,
-                **subType["__meta__"], # type: ignore
+                **subType["__meta__"],  # type: ignore
                 "id": current_key,
                 "label": obj_dict["label"] or current_key,
             }
             return subType
-        return dict(__meta__=asdict(obj)) # type: ignore
+        return {"__meta__": asdict(obj)}  # type: ignore
     elif is_dataclass(obj) and type(obj) is type:
-        result = dict(
-            __meta__=dict(
-                label=obj.__name__,
-                id=current_key,
-                type=dict(
-                    __meta__=dict(
-                        label="Dataclass",
-                        primative=False,
-                        uid="dataclass",
-                        default=None,
-                    ),
-                ),
-            ),
-        )
+        result = {
+            "__meta__": {
+                "label": obj.__name__,
+                "id": current_key,
+                "type": {
+                    "__meta__": {
+                        "label": "Dataclass",
+                        "primative": False,
+                        "uid": "dataclass",
+                        "default": None,
+                    },
+                },
+            },
+        }
         for f in fields(obj):
             result[f.name] = parse_objects(f.type, current_key=f.name, strict=strict)
         return result
     elif is_enum(obj):
-        return dict(
-            __meta__=dict(
-                id=current_key,
-                label=obj.__name__,
-                default=str(obj.__members__[list(obj.__members__.keys())[0]]), # type: ignore
-                type=dict(
-                    __meta__=dict(
-                        label="Enum",
-                        primative=True,
-                        uid="enum",
-                        default=None,
-                    ),
-                ),
-                options=[str(i) for i in obj.__members__.keys()], # type: ignore
-            ),
-        )
+        return {
+            "__meta__": {
+                "id": current_key,
+                "label": obj.__name__,
+                "default": str(obj.__members__[next(iter(obj.__members__.keys()))]),  # type: ignore
+                "type": {
+                    "__meta__": {
+                        "label": "Enum",
+                        "primative": True,
+                        "uid": "enum",
+                        "default": None,
+                    },
+                },
+                "options": [str(i) for i in obj.__members__],  # type: ignore
+            },
+        }
     # elif hasattr(obj, "__args__") and obj.__origin__ is List:
-    elif hasattr(obj, "__args__") and obj.__origin__ is list: # type: ignore
-        return dict(
-            __meta__=dict(
-                id=current_key,
-                label=current_key,
-                type=default_class_meta[list],
-            ),
-            _=parse_objects(obj.__args__[0], current_key="_", strict=strict), # type: ignore
-        )
+    elif hasattr(obj, "__args__") and obj.__origin__ is list:  # type: ignore
+        return {
+            "__meta__": {
+                "id": current_key,
+                "label": current_key,
+                "type": default_class_meta[list],
+            },
+            "_": parse_objects(obj.__args__[0], current_key="_", strict=strict),  # type: ignore
+        }
     else:
         if strict:
             raise NotImplementedError(f"Cannot parse type: {obj} has type {type(obj)}")

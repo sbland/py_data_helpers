@@ -7,6 +7,23 @@ history has not been reconstructed.
 ## Unreleased
 
 - Date: 2026-11-02
+- Summary: Resolve Ruff lint errors and formatting differences.
+- Credits: Copilot
+- Added:
+  - Added regression coverage for invalid input error types in `dict_to_cls`.
+- Changed:
+  - Use `TypeError` for unsupported field types and non-dictionary input, and `ValueError` for unknown strict-mode keys.
+  - Simplified wildcard traversal and corrected JSON decoder argument ordering.
+- Fixed:
+  - Corrected the optional type expression and exception handling for optional widget imports.
+- Docs:
+  - Recorded the lint cleanup and its validation in the changelog.
+- Tests:
+  - Full suite: 160 passed, 1 skipped.
+- Lint/Format:
+  - Ruff lint and formatting checks passed.
+
+- Date: 2026-11-02
 - Summary: Record recent dependency and documentation changes.
 - Credits: Copilot
 - Added:
