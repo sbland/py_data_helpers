@@ -1,6 +1,6 @@
 """Current version."""
 
-version = "0.2.8"
+version = "0.2.9"
 
 if __name__ == "__main__":
     print(f"data_helpers version {version}")
