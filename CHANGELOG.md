@@ -22,3 +22,20 @@ history has not been reconstructed.
   - Full suite: 156 passed, 3 failed, and 1 skipped; failures concern dataclass reflection under Python 3.14.
 - Lint/Format:
   - Ruff reported existing lint issues and formatting differences in Python source files; no source files changed.
+
+- Date: 2026-11-02
+- Summary: Fix dataclass reflection tests and type checking on Python 3.14.
+- Credits: Copilot
+- Added:
+  - None.
+- Changed:
+  - Updated class comparison tests to use Python's annotation inspection API and ignore interpreter-specific class attributes.
+- Fixed:
+  - Updated `check_types` to inspect annotations from the instance's class, supporting Python 3.14's deferred class annotations.
+- Docs:
+  - Recorded the compatibility fix and validation status in this changelog.
+- Tests:
+  - Python 3.14 full suite: 159 passed, 1 skipped.
+  - Python 3.12 tests were not run because `pytest` and `numpy` are unavailable in that interpreter environment.
+- Lint/Format:
+  - Skipped as requested.

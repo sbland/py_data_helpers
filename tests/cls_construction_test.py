@@ -122,31 +122,31 @@ def check_class_match(cls_a, cls_b, verbose=False) -> bool:
         a_members = dict(inspect.getmembers(cls_a))
         b_members = dict(inspect.getmembers(cls_b))
 
-        for k in a_members.keys():
+        runtime_specific_attrs = {"__firstlineno__", "__static_attributes__"}
+        for k in a_members.keys() - runtime_specific_attrs:
             assert k in b_members
         for k in match_attrs:
             assert str(a_members[k]) == str(b_members[k])
 
-        for k in a_members['__annotations__'].keys():
+        a_annotations = inspect.get_annotations(cls_a)
+        b_annotations = inspect.get_annotations(cls_b)
+        for k in a_annotations.keys():
             # Assert root has all groups
-            assert k in b_members['__annotations__']
+            assert k in b_annotations
             print(f"check sub objs {k}")
 
-            a_cls = a_members['__annotations__'][k]
-            b_cls = b_members['__annotations__'][k]
+            a_cls = a_annotations[k]
+            b_cls = b_annotations[k]
 
             a_cls = a_cls if not is_iterable(a_cls) else get_args(a_cls)[0]
             b_cls = b_cls if not is_iterable(b_cls) else get_args(b_cls)[0]
 
             if a_cls != b_cls:
                 if is_dataclass(a_cls):
-                    a_field_members = dict(inspect.getmembers(
-                        a_cls))
-                    b_field_members = dict(inspect.getmembers(
-                        b_cls))
-                    for f in a_field_members['__annotations__'].keys():
-                        assert str(a_field_members['__annotations__'][f]) \
-                            == str(b_field_members['__annotations__'][f])
+                    a_field_annotations = inspect.get_annotations(a_cls)
+                    b_field_annotations = inspect.get_annotations(b_cls)
+                    for f in a_field_annotations:
+                        assert str(a_field_annotations[f]) == str(b_field_annotations[f])
                 elif is_enum(a_cls):
                     assert [a.value for a in a_cls] == [a.value for a in b_cls]
                     assert [a.name for a in a_cls] == [a.name for a in b_cls]
@@ -410,4 +410,3 @@ class TestGroupToJson:
         kwargs= dict(indent=2, sort_keys=True)
         out = json.dumps(obj, cls=AdvancedJsonEncoder , **kwargs) # type: ignore
         snapshot.assert_match(out, "out.json")
-
