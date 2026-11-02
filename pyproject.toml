@@ -5,7 +5,10 @@ description = "A set of helpers for working with various datatypes"
 authors = [{ "email" = "sblandcouk@gmail.com", "name" = "Sam Bland" }]
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = ["numpy>=1.18.3"]
+dependencies = [
+    "certifi>=2026.10.19",
+    "numpy>=1.18.3",
+]
 [dependency-groups]
 dev = [
   "pytest>=8.3.3",
