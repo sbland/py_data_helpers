@@ -1,12 +1,11 @@
-from itertools import zip_longest
-from enum import Enum
 from copy import deepcopy
 from dataclasses import asdict, is_dataclass, replace
-from typing import List, Union
+from enum import Enum
+from itertools import zip_longest
 
 import numpy as np
 
-from data_helpers.comparisons import BASE_TYPES, is_base_cls, isNamedTuple, is_enum, is_iterable
+from data_helpers.comparisons import BASE_TYPES, is_base_cls, is_enum, is_iterable, isNamedTuple
 
 
 def get_val_from_obj(obj, k):
@@ -57,7 +56,7 @@ def get_nested_val(data: dict, location_str: str):
     ```
     """
     loc_split = location_str.split(".")
-    loc_arr = [loc_split[i:] for i in range(0, len(loc_split))]
+    loc_arr = [loc_split[i:] for i in range(len(loc_split))]
     out = data
     for i in range(len(loc_arr)):
         k = loc_split[i]
@@ -152,7 +151,7 @@ def merge_dictionaries(a, b, list_method=ListMergeMethods.REPLACE_ALL):
     return out
 
 
-def find_key(obj: object, k: str, prefix: str = "") -> Union[str, None]:
+def find_key(obj: object, k: str, prefix: str = "") -> str | None:
     """Find a key in a dictionary and return the full key path
 
     e.g.
@@ -189,7 +188,7 @@ def find_key(obj: object, k: str, prefix: str = "") -> Union[str, None]:
     return None
 
 
-def find_all_keys(obj: object, k: str, prefix: str = "") -> List[str]:
+def find_all_keys(obj: object, k: str, prefix: str = "") -> list[str]:
     """Find all keys in a dictionary and return the full key paths
 
     e.g.

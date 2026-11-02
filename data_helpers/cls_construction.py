@@ -1,9 +1,11 @@
 """Various functions for generating classes from lower level data structures such as json."""
 
-from dataclasses import asdict, dataclass, field, make_dataclass
 import json
+from collections.abc import Callable
+from dataclasses import asdict, dataclass, field, make_dataclass
 from enum import Enum
-from typing import Callable, List, Tuple, Union, Optional, Any
+from typing import Any, Optional
+
 from data_helpers.encoders import AdvancedJsonEncoder
 
 
@@ -14,7 +16,7 @@ class FieldBase:
     cls: type
     desc: str = ""
     required: bool = False
-    default: Optional[Callable[[], Any]] = None
+    default: Callable[[], Any] | None = None
     unit: Any = None
 
     def __asdict__(self):
@@ -28,15 +30,15 @@ class FieldBase:
     def __lt__(self, other: "FieldBase") -> bool:
         return sort_fields(self) < sort_fields(other)
 
-type FieldsClass = Union[FieldBase, "Group", "ListBase"]
+type FieldsClass = FieldBase | "Group" | "ListBase"
 
 @dataclass
 class Group:
     variable: str
     label: str
     required: bool
-    fields: List[FieldsClass] = field(default_factory=lambda: [])
-    default: Optional[Callable[[], Any]] = None
+    fields: list[FieldsClass] = field(default_factory=list)
+    default: Callable[[], Any] | None = None
     desc: str = ""
 
     def __asdict__(self):
@@ -58,8 +60,8 @@ def group_to_json(group: Group, **kwargs) -> str:
 
 @dataclass
 class ListBase:
-    field: Union[FieldBase, Group]
-    default: Optional[Callable[[], Any]] = None
+    field: FieldBase | Group
+    default: Callable[[], Any] | None = None
     default_size: int = 0
 
     def __asdict__(self):
@@ -75,7 +77,7 @@ class ListBase:
         # TODO: Might need to patch dataclass attrs here
 
         # Name the list variable to match the sub object variable.
-        setattr(self, "variable", self.field.variable)
+        self.variable = self.field.variable
         self.variable = self.field.variable
 
     def __lt__(self, other: "FieldBase") -> bool:
@@ -84,12 +86,12 @@ class ListBase:
 
 @dataclass
 class Field(FieldBase):
-    dependencies: List[str] = field(default_factory=lambda: [])
+    dependencies: list[str] = field(default_factory=list)
 
 
 @dataclass
 class NumberField(FieldBase):
-    dependencies: List[str] = field(default_factory=lambda: [])
+    dependencies: list[str] = field(default_factory=list)
     min: float = 0
     max: float = 100
     step: float = 1.0
@@ -100,7 +102,7 @@ class Option:
     uid: str
     label: str
     description: str = ""
-    dependencies: List[str] = field(default_factory=lambda: [])  # parameters required by option
+    dependencies: list[str] = field(default_factory=list)  # parameters required by option
 
 
 @dataclass
@@ -115,8 +117,8 @@ class ListGroup(ListBase):
 
 @dataclass
 class Select(FieldBase):
-    options: List[Option] = field(default_factory=lambda: [])
-    required_params: List[str] = field(default_factory=lambda: [])
+    options: list[Option] = field(default_factory=list)
+    required_params: list[str] = field(default_factory=list)
 
     def __asdict__(self):
         out = asdict(self)
@@ -134,14 +136,12 @@ def label_to_cls_name(label):
     return "".join(map(lambda s: s.capitalize(), label.split(" ")))
 
 
-def get_field_cls(f: Union[FieldBase, Group, ListBase], module):
+def get_field_cls(f: FieldBase | Group | ListBase, module):
     subclasses = {}
     if isinstance(f, Group):
         # TODO: Return subclasses
         Cls, subclasses = group_to_class(f, module)
-    elif isinstance(f, Field):
-        Cls = f.cls
-    elif isinstance(f, NumberField):
+    elif isinstance(f, Field) or isinstance(f, NumberField):
         Cls = f.cls
     elif isinstance(f, Select):
         Cls = generate_enum_from_select(f)
@@ -184,7 +184,7 @@ def get_field_default(f: FieldBase, Cls):
     return use_def, def_value
 
 
-def field_to_dataclass_field(f: Union[FieldBase, ListBase], module):
+def field_to_dataclass_field(f: FieldBase | ListBase, module):
     """Get Class and Subclasses from field schema.
 
     Parameters
@@ -202,7 +202,7 @@ def field_to_dataclass_field(f: Union[FieldBase, ListBase], module):
     if isinstance(f, ListBase):
         Cls, subclasses = get_field_cls(f.field, module)
         use_def = not getattr(f.field, "required", False)
-        def_value = True, field(default_factory=lambda: []) if use_def else None
+        def_value = True, field(default_factory=list) if use_def else None
         field_name = f.field.variable
         field_out = (field_name, Cls) if not use_def else (field_name, Cls, def_value)
         classes = [*subclasses.items(), (label_to_cls_name(f.field.label), Cls)]
@@ -216,7 +216,7 @@ def field_to_dataclass_field(f: Union[FieldBase, ListBase], module):
         return field_out, classes
 
 
-def sort_fields(f: Union[Field, FieldBase, Group, ListBase]) -> bool:
+def sort_fields(f: Field | FieldBase | Group | ListBase) -> bool:
     """Sort dataclass construction fields.
 
     Makes fields with default arg occur after fields without default arg.
@@ -241,7 +241,7 @@ def get_val_default(k: FieldBase) -> Any:
 
 
 def create_with_default(group: Group, Cls, subclasses):
-    def inner(input_data: Optional[dict] = None):
+    def inner(input_data: dict | None = None):
         _input_data = input_data or {}
         args = {}
         for k in group.fields:
@@ -289,8 +289,8 @@ def create_with_default(group: Group, Cls, subclasses):
     return inner
 
 
-def group_to_class(group: Group, module) -> Tuple[type, dict]:
-    sorted_fields: List[FieldBase] = sorted(group.fields) # type: ignore
+def group_to_class(group: Group, module) -> tuple[type, dict]:
+    sorted_fields: list[FieldBase] = sorted(group.fields) # type: ignore
     fields_parsed, subclasses = zip(*[field_to_dataclass_field(f, module) for f in sorted_fields])
     #    classes is a List[List[Tuple[str, Cls]]]
     subclasses_dict = dict([b for a in subclasses for b in a])
@@ -301,7 +301,7 @@ def group_to_class(group: Group, module) -> Tuple[type, dict]:
     return obj, subclasses_dict
 
 
-class Struct(object):
+class Struct:
     """Create a class from a dictionary structure."""
 
     def __init__(self, data):
@@ -316,7 +316,7 @@ class Struct(object):
 
 
 try:
-    import ipywidgets as widgets # type: ignore
+    import ipywidgets as widgets  # type: ignore
 
     class ConfigGeneratorUI:
         def __init__(self, group: Group) -> None:

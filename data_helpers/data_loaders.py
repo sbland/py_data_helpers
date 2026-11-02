@@ -1,6 +1,7 @@
-from pathlib import Path
-import json
 import csv
+import json
+from pathlib import Path
+
 from .cls_parsing import dict_to_cls
 
 

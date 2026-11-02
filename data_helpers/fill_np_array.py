@@ -1,4 +1,5 @@
 from functools import reduce
+
 import numpy as np
 
 

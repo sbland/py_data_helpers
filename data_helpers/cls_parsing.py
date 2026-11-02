@@ -1,27 +1,29 @@
 import enum
-from warnings import warn
-from inspect import get_annotations
-from dataclasses import asdict, is_dataclass, replace
-from typing import Any, Callable, NamedTuple, List, Union, TypeVar, get_args
+from collections.abc import Callable
 from copy import deepcopy
+from dataclasses import asdict, is_dataclass, replace
 from functools import reduce
+from inspect import get_annotations
+from typing import Any, NamedTuple, TypeVar, get_args
+from warnings import warn
+
 import numpy as np
+
 from data_helpers.comparisons import (
+    is_base_cls,
     is_dictionary,
     is_enum,
-    is_base_cls,
+    is_field_class,
     is_iterable,
     is_named_tuple,
     is_optional,
     is_union,
-    is_field_class,
+    isNamedTuple,
 )
-
 from data_helpers.dictionary_helpers import get_nested_val
-from data_helpers.comparisons import isNamedTuple
 
 
-def rgetattr(obj: object, attr: Union[str, List[str]], *args):
+def rgetattr(obj: object, attr: str | list[str], *args):
     """Get nested properties with dot notation or list of string path.
 
     https://stackoverflow.com/questions/31174295/getattr-and-setattr-on-nested-subobjects-chained-properties
@@ -54,7 +56,7 @@ T = TypeVar("T")
 
 def rsetattr(
     obj: T,
-    attr: Union[str, List[str]],
+    attr: str | list[str],
     val: Any,
     create_missing_dicts: bool = False,
 ) -> T:
@@ -109,7 +111,7 @@ def rsetattr(
     return obj_copy
 
 
-def rdelattr(obj: object, attr: Union[str, List[str]]):
+def rdelattr(obj: object, attr: str | list[str]):
     """delete nested attributes with dot string path or string list
 
     Properties
@@ -169,7 +171,7 @@ def parse_list_val(f, t, v, strict=False):
         raise TypeError(f"field {f} has list type without meta data for element types") from e
     try:
         if strict and not isinstance(v, list):
-            raise TypeError("{} must be {}".format(f, t))
+            raise TypeError(f"{f} must be {t}")
         if type(item_type) is TypeVar:
             # Type is a custom type so we should just return the value
             return v
@@ -198,7 +200,7 @@ def parse_named_tuple_val(f, t, v, strict=False):
     # if type is a Named Tuple then we assume nested and
     # run recursive dict_to_cls
     if strict and not isinstance(v, dict):
-        raise TypeError("{} must be {}".format(f, t))
+        raise TypeError(f"{f} must be {t}")
     if is_optional(t):
         if v is None:
             return None
@@ -210,7 +212,7 @@ def parse_dataclass_val(f, t, v, strict=False):
     # if type is a Named Tuple then we assume nested and
     # run recursive dict_to_cls
     if strict and not isinstance(v, dict):
-        raise TypeError("{} must be {}".format(f, t))
+        raise TypeError(f"{f} must be {t}")
     if not v:
         # TODO: Check this has no unwanted side effects
         try:
@@ -231,7 +233,7 @@ def parse_dataclass_val(f, t, v, strict=False):
 def parse_enum_val(f, t, v, strict=False):
     """Parse a enum value."""
     if strict and v not in [e.value for e in t]:
-        raise TypeError("{} must be one of {}".format(f, [e.value for e in t]))
+        raise TypeError(f"{f} must be one of {[e.value for e in t]}")
     if not strict and v is None:
         return None
     try:
@@ -249,7 +251,7 @@ def get_optional_arg(t):
     return t
 
 
-def get_parser_for_optional(t) -> Callable[[str, type | Union[Any, None], Any, bool], object]:
+def get_parser_for_optional(t) -> Callable[[str, type | Any | None, Any, bool], object]:
     """Get the function that can parse the supplied Optional type.
 
     Python 3.9 introduced breaking changes for type checking.
@@ -274,7 +276,7 @@ def get_parser_for_optional(t) -> Callable[[str, type | Union[Any, None], Any, b
     return wrapped_parser
 
 
-def get_parser(t) -> Callable[[str, type | Union[Any, None], Any, bool], object]:
+def get_parser(t) -> Callable[[str, type | Any | None, Any, bool], object]:
     """Get the function that can parse the supplied type.
 
     Python 3.9 introduced breaking changes for type checking.
@@ -303,7 +305,7 @@ def get_parser(t) -> Callable[[str, type | Union[Any, None], Any, bool], object]
     if is_optional(t):
         return get_parser_for_optional(t)
     if is_union(t):
-        if isinstance(get_args(t)[1], type(None)) or get_args(t)[1] is type(None):
+        if (get_args(t)[1] is None) or get_args(t)[1] is type(None):
             # Assume optional
             return get_parser(get_args(t)[0])
         if not all(is_base_cls(get_optional_arg(a), True) for a in get_args(t)):
@@ -322,7 +324,7 @@ def get_parser(t) -> Callable[[str, type | Union[Any, None], Any, bool], object]
     if is_named_tuple(t):
         return parse_named_tuple_val
 
-    raise TypeError("{} is invalid type".format(t))
+    raise TypeError(f"{t} is invalid type")
 
 
 def dict_to_cls(data: dict, Cls, strict=False):
@@ -330,16 +332,16 @@ def dict_to_cls(data: dict, Cls, strict=False):
     if not isinstance(data, dict):
         if data is None:
             return None
-        raise Exception("Data is invalid {}".format(type(data)))
+        raise Exception(f"Data is invalid {type(data)}")
 
     cls_fields = [f for (f, t) in get_annotations(Cls).items() if f in data]
     # cls_fields = [f for (f, t) in Cls.__annotations__.items() if f in data]
     # if strict ensure that no invalid data fields
     if strict:
-        invalid_data_keys = [k for k in data.keys() if k not in cls_fields]
+        invalid_data_keys = [k for k in data if k not in cls_fields]
         if len(invalid_data_keys) > 0:
             first_invalid_key = invalid_data_keys[0]
-            raise Exception("{} must be in {} fields".format(first_invalid_key, Cls.__name__))
+            raise Exception(f"{first_invalid_key} must be in {Cls.__name__} fields")
 
     cls_field_types = [t for (f, t) in get_annotations(Cls).items() if f in data]
     # cls_field_types = [t for (f, t) in Cls.__annotations__.items() if f in data]
@@ -473,5 +475,5 @@ def check_types(obj):
         actual_f_type = getattr(obj, f)
         validate_type = f_type if not is_field_class(f_type) else f_type.type
         if actual_f_type is not None and not isinstance(actual_f_type, validate_type):
-            raise TypeError("{} must be {} but is {}".format(f, validate_type, actual_f_type))
+            raise TypeError(f"{f} must be {validate_type} but is {actual_f_type}")
     return obj

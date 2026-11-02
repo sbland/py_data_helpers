@@ -6,11 +6,13 @@ try:
 except ImportError:
     pass
 
-from inspect import isclass
-from enum import Enum
-import numpy as np
+from collections.abc import Sequence
 from collections.abc import Sequence as CSequence
-from typing import NamedTuple, List, Sequence, Union, Tuple, Any, get_args
+from enum import Enum
+from inspect import isclass
+from typing import Any, NamedTuple, Union, get_args
+
+import numpy as np
 
 BASE_TYPES = [float, int, str, bool, np.float32, np.float64, np.int32, np.int64]
 
@@ -56,20 +58,20 @@ def is_iterable(t) -> bool:
     # Py < 3.9 # or 3.8?
     else:
         # TODO: Check no false positives here
-        if type(t) is type(List):
+        if type(t) is type(list):
             return True
         if type(t) is type(Sequence):
             return True
-        if type(t) is type(Tuple):
+        if type(t) is type(tuple):
             return True
         if type(t) is type(CSequence):
             return True
 
-        if t == List:
+        if t == list:
             return True
         if t == Sequence:
             return True
-        if t == Tuple:
+        if t == tuple:
             return True
         if t == CSequence:
             return True

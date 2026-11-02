@@ -1,10 +1,9 @@
 """Other utility functions"""
 
 from math import isclose
-from typing import List
 
 
-def PLF_value(points: List[List[float]], x: float) -> float:
+def PLF_value(points: list[list[float]], x: float) -> float:
     """Calculate the value of a piecewise linear function at a particular x value.
 
     Given an array of points (2xN) which describe a piecewise linear function,

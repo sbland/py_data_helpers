@@ -1,11 +1,11 @@
 from dataclasses import asdict, is_dataclass
-from data_helpers.list_helpers import flatten_list
-from typing import List
-from data_helpers.comparisons import is_base_cls, is_dictionary, is_iterable
 from math import isclose
 
+from data_helpers.comparisons import is_base_cls, is_dictionary, is_iterable
+from data_helpers.list_helpers import flatten_list
 
-def diff(field, a, b) -> List[str]:
+
+def diff(field, a, b) -> list[str]:
     changes = []
     item_type = type(a) if a is not None else type(b)
 

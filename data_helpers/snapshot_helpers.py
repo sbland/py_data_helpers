@@ -1,7 +1,8 @@
-from dataclasses import asdict, is_dataclass
 import json
-import numpy as np
+from dataclasses import asdict, is_dataclass
 from functools import reduce
+
+import numpy as np
 from deprecated import deprecated
 
 

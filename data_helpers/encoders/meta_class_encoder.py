@@ -1,8 +1,9 @@
 import json
-from dataclasses import asdict, is_dataclass, fields
+from dataclasses import asdict, fields, is_dataclass
+from typing import Any
+
 from data_helpers.cls_parsing import is_enum
 from data_helpers.comparisons import is_field_class
-from typing import Any, Optional
 
 default_class_meta = {
     int: {"__meta__": {"label": "Integer", "default": 0, "uid": "int", "primative": True}},
@@ -14,7 +15,7 @@ default_class_meta = {
 }
 
 
-def parse_objects(obj: Any, current_key: Optional[str] = None, strict: bool = True):
+def parse_objects(obj: Any, current_key: str | None = None, strict: bool = True):
     if type(obj) is type and obj in default_class_meta:
         return dict(__meta__=dict(id=current_key, label=current_key, type=default_class_meta[obj]))
     elif is_dataclass(obj) and type(obj) is not type:

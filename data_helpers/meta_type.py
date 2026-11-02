@@ -1,7 +1,7 @@
 """A meta type for adding additional info in the type of a variable."""
 
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 
 def field_type(cls):
@@ -19,7 +19,7 @@ def field_type(cls):
     assert cls.__annotations__["type"], (
         f"Field type must have a type attribute {cls.__annotations__}"
     )
-    setattr(cls, "__is_field_type__", True)
+    cls.__is_field_type__ = True
     return cls
 
 
@@ -29,7 +29,7 @@ class FieldType:
     label: str
     type: type
     default: Any = None
-    description: Optional[str] = None
+    description: str | None = None
 
 
 # TODO: Should implement an existing unit or science library here
@@ -39,5 +39,5 @@ class SciFieldType:
     label: str
     type: type
     default: None = None
-    description: Optional[str] = None
-    unit: Optional[str] = None
+    description: str | None = None
+    unit: str | None = None
