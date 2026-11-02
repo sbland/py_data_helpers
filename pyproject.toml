@@ -1,6 +1,6 @@
 [project]
 name = "data_helpers"
-version = "0.2.10"
+version = "0.2.11"
 description = "A set of helpers for working with various datatypes"
 authors = [{ "email" = "sblandcouk@gmail.com", "name" = "Sam Bland" }]
 readme = "README.md"
