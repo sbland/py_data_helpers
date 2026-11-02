@@ -1,21 +1,21 @@
 {
-    "_parentcls": "<class 'data_helpers.cls_construction.Group'>",
-    "default": null,
-    "desc": "",
-    "fields": [
-        {
-            "cls": "<class 'str'>",
-            "default": "default_name",
-            "dependencies": [],
-            "desc": "Name",
-            "label": "Name",
-            "required": true,
-            "unit": null,
-            "variable": "name"
-        }
-    ],
-    "label": "Inner Group",
-    "required": true,
-    "type": "group",
-    "variable": "inner_group"
+  "_parentcls": "<class 'data_helpers.cls_construction.Group'>",
+  "default": null,
+  "desc": "",
+  "fields": [
+    {
+      "cls": "<class 'str'>",
+      "default": "default_name",
+      "dependencies": [],
+      "desc": "Name",
+      "label": "Name",
+      "required": true,
+      "unit": null,
+      "variable": "name"
+    }
+  ],
+  "label": "Inner Group",
+  "required": true,
+  "type": "group",
+  "variable": "inner_group"
 }
